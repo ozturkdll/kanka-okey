@@ -2724,6 +2724,24 @@ function App() {
               onChange={(e) => setName(e.target.value)}
             />
 
+            <div className="mode-select-row">
+              <button
+                type="button"
+                className={"mode-select-btn " + (gameMode === "solo" ? "active" : "")}
+                onClick={() => setGameMode("solo")}
+              >
+                Tekli
+              </button>
+
+              <button
+                type="button"
+                className={"mode-select-btn " + (gameMode === "team" ? "active" : "")}
+                onClick={() => setGameMode("team")}
+              >
+                Eşli
+              </button>
+            </div>
+
             <button onClick={createRoom}>Masa Kur</button>
 
             <div className="divider">veya</div>
