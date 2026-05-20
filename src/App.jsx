@@ -407,12 +407,12 @@ input:focus {
   bottom: 236px;
   z-index: 5;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   pointer-events: none;
 }
 
-.open-area-main,
-.open-area-pairs {
+.open-area-main {
+  flex: 7;
   height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background:
@@ -427,36 +427,54 @@ input:focus {
   position: relative;
 }
 
-.open-area-main {
-  flex: 7;
-}
-
 .open-area-pairs {
   flex: 3;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 7px;
-  padding: 7px;
+  height: 100%;
+  min-width: 155px;
+  max-width: 190px;
+  position: relative;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #c98228, #805016);
+  border: 3px solid #f0a73b;
+  box-shadow:
+    inset 0 0 0 2px rgba(67, 36, 4, 0.85),
+    0 0 16px rgba(0, 0, 0, 0.28);
+  padding: 18px 8px 8px;
 }
 
-.pair-slot {
-  border: 1px dashed rgba(255, 255, 255, 0.22);
-  border-radius: 8px;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    rgba(255, 255, 255, 0.025);
-  background-size: 20px 20px;
+.pair-board {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  background: #053a22;
+  border: 2px solid #062815;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.pair-column {
+  display: grid;
+  grid-template-rows: repeat(10, 1fr);
+  gap: 2px;
+}
+
+.pair-cell {
+  min-height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(8, 103, 55, 0.9), rgba(3, 64, 34, 0.9));
+  border: 1px solid rgba(26, 156, 88, 0.65);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.35);
 }
 
 .open-area-label,
 .open-area-right-label {
   position: absolute;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 11px;
   font-weight: 900;
-  background: rgba(2, 6, 23, 0.42);
+  background: rgba(2, 6, 23, 0.62);
   border-radius: 999px;
   padding: 3px 8px;
 }
@@ -467,9 +485,11 @@ input:focus {
 }
 
 .open-area-right-label {
-  left: 8px;
-  top: 8px;
+  left: 50%;
+  top: -13px;
+  transform: translateX(-50%);
   z-index: 2;
+  white-space: nowrap;
 }
 
 .hand-summary-box {
@@ -888,8 +908,13 @@ input:focus {
   }
 
   .open-area-pairs {
-    gap: 6px;
-    padding: 6px;
+    min-width: 120px;
+    max-width: 140px;
+    padding: 16px 6px 6px;
+  }
+
+  .pair-column {
+    grid-template-rows: repeat(9, 1fr);
   }
 
   .bottom-right-discard-zone {
@@ -2014,6 +2039,16 @@ function App() {
     return 200 + (index + 1) * 17;
   }
 
+  function renderPairColumn(columnIndex) {
+    return (
+      <div className="pair-column" key={columnIndex}>
+        {Array.from({ length: 10 }).map((_, rowIndex) => (
+          <div className="pair-cell" key={`${columnIndex}-${rowIndex}`}></div>
+        ))}
+      </div>
+    );
+  }
+
   const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
     (player) => player.id === currentTurnPlayerId
@@ -2177,10 +2212,10 @@ function App() {
 
                   <div className="open-area-pairs">
                     <div className="open-area-right-label">Çifte Açılan</div>
-                    <div className="pair-slot"></div>
-                    <div className="pair-slot"></div>
-                    <div className="pair-slot"></div>
-                    <div className="pair-slot"></div>
+                    <div className="pair-board">
+                      {renderPairColumn(1)}
+                      {renderPairColumn(2)}
+                    </div>
                   </div>
                 </div>
 
