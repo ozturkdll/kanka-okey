@@ -128,49 +128,6 @@ input:focus {
   background: linear-gradient(135deg, #f97316, #ea580c);
 }
 
-.mode-select-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.mode-select-btn {
-  padding: 13px 10px !important;
-  border-radius: 14px !important;
-  background: #1e293b !important;
-  color: #cbd5e1 !important;
-  border: 1px solid #334155 !important;
-  box-shadow: none !important;
-}
-
-.mode-select-btn.active {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  color: white !important;
-  border-color: rgba(34, 197, 94, 0.9) !important;
-}
-
-.team-info-pill {
-  position: absolute;
-  left: 50%;
-  bottom: 164px;
-  transform: translateX(-50%);
-  z-index: 70;
-  background: rgba(2, 6, 23, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #e2e8f0;
-  border-radius: 999px;
-  padding: 7px 13px;
-  font-size: 12px;
-  font-weight: 900;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
-  white-space: nowrap;
-}
-
-.team-info-pill strong {
-  color: #22c55e;
-}
-
 .divider {
   margin: 20px 0 4px;
   color: #94a3b8;
@@ -1309,13 +1266,11 @@ function App() {
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
-  const [gameMode, setGameMode] = useState("solo");
   const [players, setPlayers] = useState([]);
   const [inRoom, setInRoom] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("Bağlanıyor...");
 
   const [gameStarted, setGameStarted] = useState(false);
-  const [roomGameMode, setRoomGameMode] = useState("solo");
   const [myPlayerId, setMyPlayerId] = useState("");
   const [myHand, setMyHand] = useState([]);
   const [deckCount, setDeckCount] = useState(0);
@@ -1365,7 +1320,6 @@ function App() {
     socket.on("room-created", (data) => {
       setRoomCode(data.roomCode);
       setPlayers(data.players);
-      setRoomGameMode(data.gameMode || data.roomGameMode || "solo");
       setMyPlayerId(data.myPlayerId);
       setInRoom(true);
     });
@@ -1373,7 +1327,6 @@ function App() {
     socket.on("players-updated", (data) => {
       setRoomCode(data.roomCode);
       setPlayers(data.players);
-      setRoomGameMode(data.gameMode || data.roomGameMode || "solo");
       setInRoom(true);
     });
 
@@ -1454,7 +1407,6 @@ function App() {
   function applyGameData(data) {
     setRoomCode(data.roomCode);
     setPlayers(data.players || []);
-    setRoomGameMode(data.gameMode || data.roomGameMode || "solo");
     setMyPlayerId(data.myPlayerId);
     setMyHand(data.myHand || []);
     setDeckCount(data.deckCount || 0);
@@ -1584,8 +1536,7 @@ function App() {
       return;
     }
 
-    alert("Seçilen oyun modu: " + gameMode);
-    socket.emit("create-room", { name, gameMode });
+    socket.emit("create-room", { name });
   }
 
   function joinRoom() {
@@ -2658,27 +2609,6 @@ function App() {
     );
   }
 
-  function getTeamInfoForPlayer(playerId) {
-    if (roomGameMode !== "team") return null;
-
-    const index = players.findIndex((player) => player.id === playerId);
-
-    if (index === -1 || players.length < 4) return null;
-
-    const teamA = [players[0], players[2]].filter(Boolean);
-    const teamB = [players[1], players[3]].filter(Boolean);
-
-    const myTeam = index === 0 || index === 2 ? teamA : teamB;
-    const teamName = index === 0 || index === 2 ? "Takım A" : "Takım B";
-    const partner = myTeam.find((player) => player.id !== playerId);
-
-    return {
-      teamName,
-      partner,
-      players: myTeam,
-    };
-  }
-
   function renderScoreRows(scoreSource = totalScores) {
     return players.map((player) => (
       <tr key={player.id}>
@@ -2725,24 +2655,6 @@ function App() {
               onChange={(e) => setName(e.target.value)}
             />
 
-            <div className="mode-select-row">
-              <button
-                type="button"
-                className={"mode-select-btn " + (gameMode === "solo" ? "active" : "")}
-                onClick={() => setGameMode("solo")}
-              >
-                Tekli
-              </button>
-
-              <button
-                type="button"
-                className={"mode-select-btn " + (gameMode === "team" ? "active" : "")}
-                onClick={() => setGameMode("team")}
-              >
-                Eşli
-              </button>
-            </div>
-
             <button onClick={createRoom}>Masa Kur</button>
 
             <div className="divider">veya</div>
@@ -2776,10 +2688,6 @@ function App() {
                 </li>
               ))}
             </ul>
-
-            <p className="status">
-              Oyun Tipi: <strong>{roomGameMode === "team" ? "Eşli" : "Tekli"}</strong>
-            </p>
 
             <p className="status">{players.length}/4 kişi odada.</p>
 

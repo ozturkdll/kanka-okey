@@ -1198,15 +1198,12 @@ function replaceJoker(socket, roomCode, openedGroupId, jokerTileId) {
 io.on("connection", (socket) => {
   console.log("Bir kullanıcı bağlandı:", socket.id);
 
-  socket.on("create-room", ({ name, gameMode }) => {
-    const selectedGameMode = gameMode === "team" ? "team" : "solo";
+  socket.on("create-room", ({ name }) => {
     const roomCode = createRoomCode();
 
     socket.data.roomCode = roomCode;
 
     rooms[roomCode] = {
-      gameMode: selectedGameMode,
-
       players: [
         {
           id: socket.id,
@@ -1225,7 +1222,6 @@ io.on("connection", (socket) => {
 
     socket.emit("room-created", {
       roomCode,
-      gameMode: room.gameMode || "solo",
       players: publicPlayerList(rooms[roomCode].players),
       myPlayerId: socket.id,
     });
@@ -1263,7 +1259,6 @@ io.on("connection", (socket) => {
 
     io.to(code).emit("players-updated", {
       roomCode: code,
-      gameMode: room.gameMode || "solo",
       players: publicPlayerList(rooms[code].players),
     });
   });
@@ -1483,7 +1478,6 @@ io.on("connection", (socket) => {
 
       io.to(roomCode).emit("players-updated", {
         roomCode,
-        gameMode: room.gameMode || "solo",
         players: publicPlayerList(room.players),
       });
 
@@ -1845,20 +1839,3 @@ function addIslekPenaltyScoreOnly(room, playerId, discardedTile) {
   }
 }
 
-
-
-function assignTeamsIfNeeded(room) {
-  if (!room) return;
-
-  if (room.gameMode !== "team") {
-    room.teams = null;
-    return;
-  }
-
-  if (!Array.isArray(room.players) || room.players.length < 4) return;
-
-  room.teams = {
-    A: [room.players[0].id, room.players[2].id],
-    B: [room.players[1].id, room.players[3].id],
-  };
-}
