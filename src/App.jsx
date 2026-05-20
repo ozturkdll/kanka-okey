@@ -1,10 +1,66 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import "./App.css";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
   transports: ["websocket", "polling"],
 });
+
+function SortableTile({
+  tile,
+  selectedTileId,
+  onSelect,
+  getTileClass,
+  getTileText,
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: tile.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 9999 : "auto",
+    opacity: isDragging ? 0.9 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${getTileClass(tile)} ${
+        selectedTileId === tile.id ? "selected-tile" : ""
+      } ${isDragging ? "dragging-tile" : ""}`}
+      onClick={() => onSelect(tile)}
+      {...attributes}
+      {...listeners}
+    >
+      {getTileText(tile)}
+    </div>
+  );
+}
 
 function App() {
   const [name, setName] = useState("");
@@ -20,18 +76,21 @@ function App() {
   const [deckCount, setDeckCount] = useState(0);
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState("");
   const [discardedTile, setDiscardedTile] = useState(null);
+  const [selectedTileId, setSelectedTileId] = useState(null);
 
-  const [dragStart, setDragStart] = useState(null);
-  const [draggingTileId, setDraggingTileId] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isOverDiscardZone, setIsOverDiscardZone] = useState(false);
-  const [heldOkeyTileId, setHeldOkeyTileId] = useState(null);
-
-  const myHandRef = useRef([]);
-
-  useEffect(() => {
-    myHandRef.current = myHand;
-  }, [myHand]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 120,
+        tolerance: 8,
+      },
+    })
+  );
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -61,10 +120,10 @@ function App() {
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
       setMyHand(data.myHand);
-      myHandRef.current = data.myHand;
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
+      setSelectedTileId(null);
     });
 
     socket.on("game-updated", (data) => {
@@ -72,10 +131,10 @@ function App() {
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
       setMyHand(data.myHand);
-      myHandRef.current = data.myHand;
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
+      setSelectedTileId(null);
     });
 
     socket.on("error-message", (message) => {
@@ -99,9 +158,7 @@ function App() {
       return;
     }
 
-    socket.emit("create-room", {
-      name,
-    });
+    socket.emit("create-room", { name });
   }
 
   function joinRoom() {
@@ -122,9 +179,7 @@ function App() {
   }
 
   function startGame() {
-    socket.emit("start-game", {
-      roomCode,
-    });
+    socket.emit("start-game", { roomCode });
   }
 
   function copyRoomCode() {
@@ -132,157 +187,88 @@ function App() {
     alert("Oda kodu kopyalandı.");
   }
 
-  function isOkeyTile(tile) {
-    if (!tile) return false;
-
-    // Şimdilik gösterge sarı 2 olduğu için okey sarı 3 kabul ediyoruz.
-    // Sahte okey de basılı tutunca arkasını döndürsün diye ekledim.
-    return tile.fake || (tile.color === "yellow" && tile.number === 3);
+  function selectTile(tile) {
+    setSelectedTileId((prev) => (prev === tile.id ? null : tile.id));
   }
 
-  function reorderHand(targetTileId) {
-    if (!draggingTileId || draggingTileId === targetTileId) return;
-
-    setMyHand((prevHand) => {
-      const fromIndex = prevHand.findIndex((tile) => tile.id === draggingTileId);
-      const toIndex = prevHand.findIndex((tile) => tile.id === targetTileId);
-
-      if (fromIndex === -1 || toIndex === -1) return prevHand;
-
-      const newHand = [...prevHand];
-      const [movedTile] = newHand.splice(fromIndex, 1);
-      newHand.splice(toIndex, 0, movedTile);
-
-      myHandRef.current = newHand;
-
-      return newHand;
-    });
-  }
-
-  function getElementUnderPointer(e) {
-    const draggedElement = e.currentTarget;
-
-    draggedElement.style.pointerEvents = "none";
-    const element = document.elementFromPoint(e.clientX, e.clientY);
-    draggedElement.style.pointerEvents = "";
-
-    return element;
-  }
-
-  function handleTilePointerDown(e, tile) {
-    e.currentTarget.setPointerCapture(e.pointerId);
-
-    setDragStart({
-      x: e.clientX,
-      y: e.clientY,
-    });
-
-    setDraggingTileId(tile.id);
-    setDragOffset({ x: 0, y: 0 });
-
-    if (isOkeyTile(tile)) {
-      setHeldOkeyTileId(tile.id);
+  function discardSelectedTile() {
+    if (!selectedTileId) {
+      alert("Önce atacağın taşı seç.");
+      return;
     }
-  }
 
-  function handleTilePointerMove(e, tile) {
-    if (draggingTileId !== tile.id || !dragStart) return;
-
-    setDragOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
-
-    const element = getElementUnderPointer(e);
-
-    const targetTile = element?.closest("[data-tile-id]");
-    const discardZone = element?.closest(".discard-drop-zone");
-
-    setIsOverDiscardZone(Boolean(discardZone));
-
-    if (targetTile) {
-      const targetTileId = Number(targetTile.dataset.tileId);
-      reorderHand(targetTileId);
-    }
-  }
-
-  function handleTilePointerUp(e, tile) {
-    if (draggingTileId !== tile.id || !dragStart) return;
-
-    const element = getElementUnderPointer(e);
-    const discardZone = element?.closest(".discard-drop-zone");
-
-    const orderedTileIds = myHandRef.current.map((handTile) => handTile.id);
-
-    socket.emit("reorder-hand", {
+    socket.emit("discard-tile", {
       roomCode,
-      orderedTileIds,
+      tileId: selectedTileId,
     });
+  }
 
-    if (discardZone) {
-      socket.emit("discard-tile", {
-        roomCode,
-        tileId: tile.id,
+  function handleDragEnd(event) {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    if (active.id !== over.id) {
+      setMyHand((items) => {
+        const oldIndex = items.findIndex((tile) => tile.id === active.id);
+        const newIndex = items.findIndex((tile) => tile.id === over.id);
+
+        if (oldIndex === -1 || newIndex === -1) return items;
+
+        const newHand = arrayMove(items, oldIndex, newIndex);
+
+        socket.emit("reorder-hand", {
+          roomCode,
+          orderedTileIds: newHand.map((tile) => tile.id),
+        });
+
+        return newHand;
       });
     }
-
-    setDragStart(null);
-    setDraggingTileId(null);
-    setDragOffset({ x: 0, y: 0 });
-    setIsOverDiscardZone(false);
-    setHeldOkeyTileId(null);
-  }
-
-  function handleTilePointerCancel() {
-    setDragStart(null);
-    setDraggingTileId(null);
-    setDragOffset({ x: 0, y: 0 });
-    setIsOverDiscardZone(false);
-    setHeldOkeyTileId(null);
   }
 
   function getTileClass(tile) {
     if (!tile) return "tile";
-
-    if (heldOkeyTileId === tile.id && isOkeyTile(tile)) {
-      return "tile back okey-back";
-    }
-
     if (tile.fake) return "tile fake";
     return `tile ${tile.color}`;
   }
 
   function getTileText(tile) {
     if (!tile) return "";
-
-    if (heldOkeyTileId === tile.id && isOkeyTile(tile)) {
-      return "?";
-    }
-
     if (tile.fake) return "S";
     return tile.number;
   }
 
   function renderTile(tile) {
     return (
-      <div
-        className={`${getTileClass(tile)} ${
-          draggingTileId === tile.id ? "dragging" : ""
-        }`}
+      <SortableTile
         key={tile.id}
-        data-tile-id={tile.id}
-        style={{
-          transform:
-            draggingTileId === tile.id
-              ? `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(1.08)`
-              : "none",
-        }}
-        onPointerDown={(e) => handleTilePointerDown(e, tile)}
-        onPointerMove={(e) => handleTilePointerMove(e, tile)}
-        onPointerUp={(e) => handleTilePointerUp(e, tile)}
-        onPointerCancel={handleTilePointerCancel}
+        tile={tile}
+        selectedTileId={selectedTileId}
+        onSelect={selectTile}
+        getTileClass={getTileClass}
+        getTileText={getTileText}
+      />
+    );
+  }
+
+  function renderDiscardBox(label, active = false, clickable = false) {
+    return (
+      <div
+        className={`discard-box-small ${active ? "active-discard-box" : ""} ${
+          clickable ? "clickable-discard" : ""
+        }`}
+        onClick={clickable ? discardSelectedTile : undefined}
       >
-        {getTileText(tile)}
+        <span>{label}</span>
+
+        {active && discardedTile ? (
+          <div className={getTileClass(discardedTile)}>
+            {getTileText(discardedTile)}
+          </div>
+        ) : (
+          <div className="empty-discard-slot">+</div>
+        )}
       </div>
     );
   }
@@ -388,7 +374,7 @@ function App() {
                   <div className="avatar">{topPlayer.name[0]}</div>
                   <div>
                     <strong>{topPlayer.name}</strong>
-                    <span>🟡 284</span>
+                    <span>Rakip</span>
                   </div>
                 </div>
               )}
@@ -402,7 +388,7 @@ function App() {
                   <div className="avatar">{leftPlayer.name[0]}</div>
                   <div>
                     <strong>{leftPlayer.name}</strong>
-                    <span>🟡 222</span>
+                    <span>Rakip</span>
                   </div>
                 </div>
               )}
@@ -416,12 +402,22 @@ function App() {
                   <div className="avatar">{rightPlayer.name[0]}</div>
                   <div>
                     <strong>{rightPlayer.name}</strong>
-                    <span>🟡 228</span>
+                    <span>Rakip</span>
                   </div>
                 </div>
               )}
 
-              <div className="tile-count left-count">22</div>
+              <div className="opponent-discard top-discard">
+                {renderDiscardBox("Atılan", false)}
+              </div>
+
+              <div className="opponent-discard left-discard">
+                {renderDiscardBox("Atılan", false)}
+              </div>
+
+              <div className="opponent-discard right-discard">
+                {renderDiscardBox("Atılan", false)}
+              </div>
 
               <div className="opened-sets set-left">
                 <div className="mini-row">
@@ -450,45 +446,16 @@ function App() {
                 </div>
               </div>
 
-              <div className="center-tools">
+              <div className="center-tools clean-center">
                 <div className="indicator-tile">
                   <span>Gösterge</span>
                   <div className="tile yellow">2</div>
                 </div>
 
-                <div className="deck-stack">
-                  <span>Deste</span>
-                  <strong>{deckCount}</strong>
+                <div className="deck-back-box">
+                  <span>Kalan</span>
+                  <div className="deck-back-tile">{deckCount}</div>
                 </div>
-
-                <div className="discard-area">
-                  <span>Atılan</span>
-                  {discardedTile ? (
-                    <div className={getTileClass(discardedTile)}>
-                      {getTileText(discardedTile)}
-                    </div>
-                  ) : (
-                    <div className="tile back">?</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="quick-actions">
-                <button>✅</button>
-                <button>🛒</button>
-                <button>💬</button>
-                <button>😊</button>
-              </div>
-
-              <div className="side-actions">
-                <button>
-                  <strong>1 2 3</strong>
-                  Seri Diz
-                </button>
-                <button>
-                  <strong>5 5</strong>
-                  Çift Diz
-                </button>
               </div>
 
               <div
@@ -504,31 +471,45 @@ function App() {
               </div>
 
               <div className={`rack ${isMyTurn ? "rack-my-turn" : ""}`}>
-                <div className="rack-rows">
-                  <div className="rack-row">
-                    {myHand.slice(0, 11).map((tile) => renderTile(tile))}
-                  </div>
+                <div className="rack-wood-top"></div>
 
-                  <div className="rack-row">
-                    {myHand.slice(11).map((tile) => renderTile(tile))}
+                <div className="rack-main">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={myHand.map((tile) => tile.id)}
+                      strategy={rectSortingStrategy}
+                    >
+                      <div className="rack-rows">
+                        <div className="rack-row">
+                          {myHand.slice(0, 11).map((tile) => renderTile(tile))}
+                        </div>
+
+                        <div className="rack-row">
+                          {myHand.slice(11).map((tile) => renderTile(tile))}
+                        </div>
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+
+                  <div className="my-discard-zone">
+                    {renderDiscardBox("TAŞ AT", Boolean(discardedTile), true)}
                   </div>
                 </div>
 
-                <div
-                  className={`discard-drop-zone ${
-                    isOverDiscardZone ? "drop-zone-active" : ""
-                  }`}
-                >
-                  <span>TAŞ AT</span>
-                  <small>Buraya bırak</small>
-                </div>
+                <div className="rack-wood-bottom"></div>
               </div>
             </div>
           </div>
 
           <div className="bottom-actions">
             <button>Taş Çek</button>
-            <button className="secondary">Taş At</button>
+            <button className="secondary" onClick={discardSelectedTile}>
+              Taş At
+            </button>
             <button className="start">101 Aç</button>
           </div>
         </div>
