@@ -255,7 +255,7 @@ input:focus {
 }
 
 .table-felt::after {
-  content: "KANKA OKEY";
+  content: "1O1KEY";
   position: absolute;
   left: 50%;
   top: 39%;
@@ -2642,7 +2642,7 @@ function App() {
             <div className="logo-row">
               <div className="logo-chip">K</div>
               <div>
-                <h1>Kanka Okey</h1>
+                <h1>1O1key</h1>
                 <p>Oda kur, link at, çipsiz oyna.</p>
               </div>
             </div>
