@@ -1313,6 +1313,10 @@ function App() {
       setTilePositions((prev) => reconcileTilePositions(data.myHand || [], prev));
     });
 
+    socket.on("penalty-message", (data) => {
+      alert(data?.message || "Ceza yedin.");
+    });
+
     socket.on("error-message", (message) => {
       alert(message);
 
@@ -1342,6 +1346,7 @@ function App() {
       socket.off("players-updated");
       socket.off("game-started");
       socket.off("game-updated");
+      socket.off("penalty-message");
       socket.off("error-message");
     };
   }, []);
