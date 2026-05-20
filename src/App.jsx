@@ -16,18 +16,10 @@ const PAIR_COLS = 2;
 
 const TILE_HEARTS = {
   red: "♥",
-  blue: "●",
-  black: "♣",
-  yellow: "♦",
+  blue: "♥",
+  black: "♥",
+  yellow: "♥",
   fake: "★",
-};
-
-const TILE_COLOR_LABELS = {
-  red: "K",
-  blue: "M",
-  black: "S",
-  yellow: "SA",
-  fake: "S",
 };
 
 const styles = `
@@ -565,7 +557,7 @@ input:focus {
   background: #f8fafc;
   color: #020617;
   border: 1px solid #e2e8f0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   display: flex;
   flex-direction: column;
@@ -573,20 +565,14 @@ input:focus {
   justify-content: center;
   box-shadow: inset 0 -2px 0 rgba(0,0,0,.13);
   cursor: pointer;
-  line-height: 0.85;
+  line-height: 0.88;
+  gap: 0;
 }
 
 .opened-tile small {
   font-size: 6px;
   line-height: 1;
   font-weight: 900;
-}
-
-.opened-color-tag {
-  font-size: 5px;
-  font-weight: 900;
-  line-height: 1;
-  opacity: 0.9;
 }
 
 .opened-tile.red {
@@ -655,8 +641,8 @@ input:focus {
 
 .indicator-tile,
 .deck-back-box {
-  width: 70px;
-  height: 76px;
+  width: 76px;
+  height: 86px;
   border-radius: 12px;
   background: rgba(2, 6, 23, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -912,9 +898,9 @@ input:focus {
   align-items: center;
   justify-content: center;
   gap: 0;
-  font-size: 23px;
+  font-size: 24px;
   font-weight: 900;
-  line-height: 0.86;
+  line-height: 0.85;
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -924,17 +910,11 @@ input:focus {
 }
 
 .tile small {
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   font-weight: 900;
   opacity: 0.95;
-}
-
-.tile-color-tag {
-  font-size: 8px;
-  font-weight: 900;
-  line-height: 1;
-  opacity: 0.9;
+  margin-top: 1px;
 }
 
 .free-rack-board .tile {
@@ -960,9 +940,13 @@ input:focus {
 .center-static-tile {
   position: static !important;
   cursor: default !important;
-  width: 42px;
-  height: 52px;
-  font-size: 22px;
+  width: 48px;
+  height: 62px;
+  font-size: 28px;
+}
+
+.center-static-tile small {
+  font-size: 11px;
 }
 
 .tile.red {
@@ -1191,10 +1175,6 @@ input:focus {
     font-size: 5px;
   }
 
-  .opened-color-tag {
-    font-size: 4px;
-  }
-
   .top-left-discard-zone {
     left: 8px;
     top: 72px;
@@ -1235,8 +1215,8 @@ input:focus {
 
   .indicator-tile,
   .deck-back-box {
-    width: 56px;
-    height: 66px;
+    width: 58px;
+    height: 70px;
   }
 
   .my-player-card {
@@ -1282,8 +1262,10 @@ input:focus {
     font-size: 8px;
   }
 
-  .tile-color-tag {
-    font-size: 7px;
+  .center-static-tile {
+    width: 40px;
+    height: 54px;
+    font-size: 24px;
   }
 
   .empty-discard-slot {
@@ -1686,7 +1668,6 @@ function App() {
       <>
         <span>{getTileText(tile)}</span>
         <small>{TILE_HEARTS[color] || "♥"}</small>
-        <span className="tile-color-tag">{TILE_COLOR_LABELS[color] || ""}</span>
       </>
     );
   }
@@ -2459,7 +2440,7 @@ function App() {
     }
 
     if (!playerOpenTypes[myPlayerId] && totalScore < 101) {
-      alert(`Seri açmak için en az 101 lazım. Şu an: ${totalScore}`);
+      alert(\`Seri açmak için en az 101 lazım. Şu an: \${totalScore}\`);
       return;
     }
 
@@ -2485,7 +2466,7 @@ function App() {
     }
 
     if (!playerOpenTypes[myPlayerId] && validGroups.length < 5) {
-      alert(`Çift açmak için en az 5 çift lazım. Şu an: ${validGroups.length}`);
+      alert(\`Çift açmak için en az 5 çift lazım. Şu an: \${validGroups.length}\`);
       return;
     }
 
@@ -2501,12 +2482,10 @@ function App() {
     return (
       <div
         key={tile.id}
-        className={`${getTileClass(tile)} ${
-          draggingTile?.id === tile.id ? "dragging-tile" : ""
-        }`}
+        className={\`\${getTileClass(tile)} \${draggingTile?.id === tile.id ? "dragging-tile" : ""}\`}
         style={{
-          left: `${position.x}px`,
-          top: `${position.y}px`,
+          left: \`\${position.x}px\`,
+          top: \`\${position.y}px\`,
         }}
         onDoubleClick={() => toggleOkeyBack(tile)}
         onPointerDown={(e) => handleTilePointerDown(e, tile)}
@@ -2561,7 +2540,7 @@ function App() {
 
     return (
       <div
-        className={`table-discard-zone ${className} ${takeable ? "side-takeable" : ""}`}
+        className={\`table-discard-zone \${className} \${takeable ? "side-takeable" : ""}\`}
         onClick={takeable ? takeDiscard : undefined}
         title={takeable ? "Yandaki taşı al" : ""}
       >
@@ -2595,7 +2574,6 @@ function App() {
       >
         <span>{getOpenedTileText(entry)}</span>
         <small>{TILE_HEARTS[color] || "♥"}</small>
-        <span className="opened-color-tag">{TILE_COLOR_LABELS[color] || ""}</span>
       </div>
     );
   }
@@ -2621,15 +2599,15 @@ function App() {
           const group = getSeriesGroup(sectionIndex, rowIndex);
 
           return (
-            <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
+            <div className="series-row" key={\`\${sectionIndex}-\${rowIndex}\`}>
               {Array.from({ length: SERIES_COLS }).map((__, colIndex) => {
                 const slot = colIndex + 1;
                 const entry = getOpenedEntry(group, slot);
 
                 return (
                   <div
-                    className={`series-cell ${group ? "drop-target" : ""}`}
-                    key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+                    className={\`series-cell \${group ? "drop-target" : ""}\`}
+                    key={\`\${sectionIndex}-\${rowIndex}-\${colIndex}\`}
                     data-opened-group-id={group?.id || ""}
                   >
                     {entry && renderOpenedTile(entry, group)}
@@ -2650,15 +2628,15 @@ function App() {
           const group = getPairGroup(sectionIndex, rowIndex);
 
           return (
-            <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
+            <div className="pair-row" key={\`\${sectionIndex}-\${rowIndex}\`}>
               {Array.from({ length: PAIR_COLS }).map((__, colIndex) => {
                 const slot = colIndex + 1;
                 const entry = getOpenedEntry(group, slot);
 
                 return (
                   <div
-                    className={`pair-cell ${group ? "drop-target" : ""}`}
-                    key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+                    className={\`pair-cell \${group ? "drop-target" : ""}\`}
+                    key={\`\${sectionIndex}-\${rowIndex}-\${colIndex}\`}
                     data-opened-group-id={group?.id || ""}
                   >
                     {entry && renderOpenedTile(entry, group)}
@@ -2692,7 +2670,8 @@ function App() {
   const currentTurnPlayer = players.find((player) => player.id === currentTurnPlayerId);
   const isMyTurn = currentTurnPlayerId === myPlayerId;
   const canDraw = isMyTurn && turnPhase === "draw" && !takenDiscard;
-  const canTakeLeftDiscard = isMyTurn && turnPhase === "draw" && leftPlayer && discardPiles[leftPlayer.id];
+  const canTakeLeftDiscard =
+    isMyTurn && turnPhase === "draw" && leftPlayer && discardPiles[leftPlayer.id];
 
   return (
     <>
@@ -2769,9 +2748,9 @@ function App() {
                 <strong>{roomCode}</strong>
               </div>
 
-              <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
-                Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}{" "}
-                / {turnPhase === "draw" ? "Taş çek / yandan al" : "Taş at"}
+              <div className={\`turn-pill \${isMyTurn ? "my-turn" : ""}\`}>
+                Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"} /{" "}
+                {turnPhase === "draw" ? "Taş çek / yandan al" : "Taş at"}
               </div>
 
               <button className="score-btn" onClick={() => setShowScoreboard(true)}>
@@ -2791,51 +2770,45 @@ function App() {
 
                 {topPlayer && (
                   <div
-                    className={`player-badge top-player ${
+                    className={\`player-badge top-player ${
                       currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
-                    }`}
+                    }\`}
                     style={getTurnRingStyle(topPlayer.id)}
                   >
                     <div className="avatar">{topPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{topPlayer.name}</strong>
-                      <span className="player-subtitle">
-                        ₺{getPlayerPrestige(topPlayer)}
-                      </span>
+                      <span className="player-subtitle">₺{getPlayerPrestige(topPlayer)}</span>
                     </div>
                   </div>
                 )}
 
                 {leftPlayer && (
                   <div
-                    className={`player-badge left-player ${
+                    className={\`player-badge left-player ${
                       currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
-                    }`}
+                    }\`}
                     style={getTurnRingStyle(leftPlayer.id)}
                   >
                     <div className="avatar">{leftPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{leftPlayer.name}</strong>
-                      <span className="player-subtitle">
-                        ₺{getPlayerPrestige(leftPlayer)}
-                      </span>
+                      <span className="player-subtitle">₺{getPlayerPrestige(leftPlayer)}</span>
                     </div>
                   </div>
                 )}
 
                 {rightPlayer && (
                   <div
-                    className={`player-badge right-player ${
+                    className={\`player-badge right-player ${
                       currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
-                    }`}
+                    }\`}
                     style={getTurnRingStyle(rightPlayer.id)}
                   >
                     <div className="avatar">{rightPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{rightPlayer.name}</strong>
-                      <span className="player-subtitle">
-                        ₺{getPlayerPrestige(rightPlayer)}
-                      </span>
+                      <span className="player-subtitle">₺{getPlayerPrestige(rightPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -2847,9 +2820,9 @@ function App() {
                 })}
 
                 <div
-                  className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
+                  className={\`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
                     isOverMyDiscard ? "discard-zone-hover" : ""
-                  }`}
+                  }\`}
                 >
                   <span>TAŞ AT</span>
                   {discardPiles[myPlayerId] ? (
@@ -2891,12 +2864,9 @@ function App() {
                   <div className="indicator-tile">
                     <span>Gösterge</span>
                     {indicatorTile ? (
-                      <div className={`tile ${indicatorTile.color} center-static-tile`}>
+                      <div className={\`tile \${indicatorTile.color} center-static-tile\`}>
                         <span>{indicatorTile.number}</span>
                         <small>{TILE_HEARTS[indicatorTile.color] || "♥"}</small>
-                        <span className="tile-color-tag">
-                          {TILE_COLOR_LABELS[indicatorTile.color] || ""}
-                        </span>
                       </div>
                     ) : (
                       <div className="deck-back-tile">?</div>
@@ -2904,7 +2874,7 @@ function App() {
                   </div>
 
                   <div
-                    className={`deck-back-box ${canDraw ? "" : "disabled-deck"}`}
+                    className={\`deck-back-box \${canDraw ? "" : "disabled-deck"}\`}
                     onClick={drawTile}
                     title="Taş çek"
                   >
@@ -2914,9 +2884,9 @@ function App() {
                 </div>
 
                 <div
-                  className={`my-player-card ${
+                  className={\`my-player-card ${
                     currentTurnPlayerId === myPlayerId ? "active-turn" : ""
-                  }`}
+                  }\`}
                   style={getTurnRingStyle(myPlayerId)}
                 >
                   <div className="avatar">{me ? me.name[0] : "S"}</div>
@@ -3029,7 +2999,7 @@ function App() {
                       const player = players.find((item) => item.id === penalty.playerId);
 
                       return (
-                        <tr key={`${penalty.playerId}-${index}`}>
+                        <tr key={\`\${penalty.playerId}-\${index}\`}>
                           <td>{player?.name || "Oyuncu"}</td>
                           <td>{penalty.reason}</td>
                           <td>{penalty.amount}</td>
