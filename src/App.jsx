@@ -292,6 +292,7 @@ input:focus {
   min-height: 14px;
   display: block;
   font-weight: 700;
+  margin-top: 2px;
 }
 
 .avatar {
@@ -312,6 +313,9 @@ input:focus {
 
 .player-info {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .top-player {
@@ -332,10 +336,8 @@ input:focus {
 
 .left-player .player-info,
 .right-player .player-info {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
 }
 
 .left-player strong,
@@ -370,6 +372,11 @@ input:focus {
   transform: translateX(-50%);
   min-width: 168px;
   justify-content: center;
+}
+
+.my-player-card .player-info,
+.top-player .player-info {
+  align-items: flex-start;
 }
 
 .my-player-card.active-turn,
@@ -414,10 +421,10 @@ input:focus {
   height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background:
-    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px),
     rgba(2, 6, 23, 0.06);
-  background-size: 36px 36px;
+  background-size: 28px 28px;
   box-shadow:
     inset 0 0 35px rgba(255, 255, 255, 0.02),
     0 0 16px rgba(255, 255, 255, 0.035);
@@ -432,7 +439,7 @@ input:focus {
 .open-area-pairs {
   flex: 3;
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 8px;
 }
@@ -440,7 +447,11 @@ input:focus {
 .pair-slot {
   border: 1px dashed rgba(255, 255, 255, 0.22);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.025);
+  background-size: 24px 24px;
   position: relative;
 }
 
@@ -466,6 +477,7 @@ input:focus {
   background: rgba(2, 6, 23, 0.42);
   border-radius: 999px;
   padding: 3px 8px;
+  z-index: 2;
 }
 
 /* HAND SUMMARY + CENTER TOOLS */
@@ -891,6 +903,11 @@ input:focus {
     top: 78px;
     bottom: 240px;
     gap: 8px;
+  }
+
+  .open-area-pairs {
+    gap: 6px;
+    padding: 6px;
   }
 
   .top-left-discard-zone {
@@ -1451,17 +1468,35 @@ function App() {
     setIsOverMyDiscard(false);
   }
 
-  function applyCompactLayout(tileList) {
+  function applyLayoutWithGroups(groups) {
     const positions = {};
+    let row = 0;
+    let slot = 0;
+    const maxSlot = getMaxSlot();
 
-    tileList.forEach((tile, index) => {
-      const row = index < 11 ? 0 : 1;
-      const col = row === 0 ? index : index - 11;
+    groups.forEach((group) => {
+      if (!group.length) return;
 
-      positions[tile.id] = {
-        x: slotToPosition(col),
-        y: row === 0 ? ROW_1_Y : ROW_2_Y,
-      };
+      if (slot + group.length > maxSlot + 1) {
+        row = 1;
+        slot = 0;
+      }
+
+      group.forEach((tile) => {
+        if (slot > maxSlot) {
+          row = 1;
+          slot = 0;
+        }
+
+        positions[tile.id] = {
+          x: slotToPosition(slot),
+          y: row === 0 ? ROW_1_Y : ROW_2_Y,
+        };
+
+        slot++;
+      });
+
+      slot++;
     });
 
     setTilePositions((prev) => ({
@@ -1470,9 +1505,7 @@ function App() {
     }));
   }
 
-  function handleArrange(mode) {
-    if (!myHand.length) return;
-
+  function buildOkeyGroups(mode) {
     const colorOrder = {
       yellow: 0,
       blue: 1,
@@ -1480,53 +1513,155 @@ function App() {
       red: 3,
     };
 
-    const tiles = [...myHand];
+    const unused = [...myHand];
+    const groups = [];
 
-    if (mode === "run") {
-      tiles.sort((a, b) => {
-        const ca = colorOrder[a.color] ?? 99;
-        const cb = colorOrder[b.color] ?? 99;
-        return ca - cb || a.number - b.number;
+    function removeTiles(group) {
+      group.forEach((tile) => {
+        const index = unused.findIndex((item) => item.id === tile.id);
+        if (index !== -1) unused.splice(index, 1);
       });
     }
 
-    if (mode === "pair") {
-      tiles.sort((a, b) => {
-        return a.number - b.number || (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99);
+    function findRuns() {
+      const runGroups = [];
+      const colors = ["yellow", "blue", "black", "red"];
+
+      colors.forEach((color) => {
+        const tiles = unused
+          .filter((tile) => tile.color === color && !tile.fake)
+          .sort((a, b) => a.number - b.number);
+
+        let current = [];
+
+        tiles.forEach((tile) => {
+          if (!current.length) {
+            current = [tile];
+            return;
+          }
+
+          const last = current[current.length - 1];
+
+          if (tile.number === last.number + 1) {
+            current.push(tile);
+          } else if (tile.number !== last.number) {
+            if (current.length >= 3) {
+              runGroups.push([...current]);
+            }
+
+            current = [tile];
+          }
+        });
+
+        if (current.length >= 3) {
+          runGroups.push([...current]);
+        }
       });
+
+      runGroups
+        .sort((a, b) => b.length - a.length)
+        .forEach((group) => {
+          const available = group.filter((tile) =>
+            unused.some((item) => item.id === tile.id)
+          );
+
+          if (available.length >= 3) {
+            groups.push(available);
+            removeTiles(available);
+          }
+        });
     }
 
-    if (mode === "doubleTiles") {
-      const counts = {};
-      tiles.forEach((tile) => {
-        counts[tile.number] = (counts[tile.number] || 0) + 1;
+    function findSameNumberSets() {
+      const byNumber = {};
+
+      unused.forEach((tile) => {
+        if (tile.fake) return;
+        if (!byNumber[tile.number]) byNumber[tile.number] = [];
+        byNumber[tile.number].push(tile);
       });
 
-      tiles.sort((a, b) => {
-        return (
-          (counts[b.number] || 0) - (counts[a.number] || 0) ||
-          a.number - b.number ||
-          (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99)
+      Object.values(byNumber).forEach((tiles) => {
+        const uniqueByColor = {};
+
+        tiles.forEach((tile) => {
+          if (!uniqueByColor[tile.color]) {
+            uniqueByColor[tile.color] = tile;
+          }
+        });
+
+        const group = Object.values(uniqueByColor).sort(
+          (a, b) => (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99)
         );
+
+        if (group.length >= 3) {
+          groups.push(group);
+          removeTiles(group);
+        }
       });
     }
 
-    if (mode === "processRuns") {
-      tiles.sort((a, b) => {
-        return a.number - b.number || (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99);
+    function findPairs() {
+      const byIdentity = {};
+
+      unused.forEach((tile) => {
+        if (tile.fake) return;
+        const key = `${tile.color}-${tile.number}`;
+
+        if (!byIdentity[key]) byIdentity[key] = [];
+        byIdentity[key].push(tile);
+      });
+
+      Object.values(byIdentity).forEach((tiles) => {
+        while (tiles.length >= 2) {
+          const group = tiles.splice(0, 2);
+          groups.push(group);
+          removeTiles(group);
+        }
       });
     }
+
+    if (mode === "pair" || mode === "doubleTiles") {
+      findPairs();
+      findSameNumberSets();
+      findRuns();
+    } else {
+      findRuns();
+      findSameNumberSets();
+      findPairs();
+    }
+
+    const rest = unused.sort((a, b) => {
+      return (
+        a.number - b.number ||
+        (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99)
+      );
+    });
+
+    if (rest.length) {
+      groups.push(rest);
+    }
+
+    return groups;
+  }
+
+  function handleArrange(mode) {
+    if (!myHand.length) return;
 
     if (mode === "collect") {
-      tiles.sort((a, b) => {
+      const tiles = [...myHand].sort((a, b) => {
         const pa = tilePositions[a.id] || { x: 12, y: ROW_1_Y };
         const pb = tilePositions[b.id] || { x: 12, y: ROW_1_Y };
 
         return closestRackRow(pa.y) - closestRackRow(pb.y) || pa.x - pb.x;
       });
+
+      applyLayoutWithGroups([tiles]);
+      return;
     }
 
-    applyCompactLayout(tiles);
+    const groups = buildOkeyGroups(mode);
+    applyLayoutWithGroups(groups);
   }
 
   function renderFreeTile(tile) {
