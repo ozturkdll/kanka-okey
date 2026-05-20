@@ -8,46 +8,106 @@ body {
 .page {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
   padding: 20px;
 }
 
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #1e293b;
+  border-radius: 20px;
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
 h1 {
-  font-size: 48px;
-  margin-bottom: 10px;
+  margin: 0 0 10px;
+  font-size: 40px;
+}
+
+h2 {
+  margin-top: 28px;
 }
 
 p {
-  font-size: 18px;
   color: #cbd5e1;
 }
 
+input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  outline: none;
+}
+
 button {
-  margin-top: 20px;
-  padding: 14px 28px;
-  font-size: 18px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  font-size: 17px;
   border: none;
   border-radius: 12px;
   background: #22c55e;
   color: white;
   cursor: pointer;
+  font-weight: bold;
 }
 
 button:hover {
   background: #16a34a;
 }
 
-.room-box {
-  margin-top: 30px;
-  padding: 20px;
-  border-radius: 16px;
-  background: #1e293b;
+.secondary {
+  background: #3b82f6;
 }
 
-.room-box strong {
-  font-size: 36px;
-  letter-spacing: 4px;
+.secondary:hover {
+  background: #2563eb;
+}
+
+.start {
+  background: #f97316;
+}
+
+.start:hover {
+  background: #ea580c;
+}
+
+.divider {
+  margin: 18px 0 4px;
+  color: #94a3b8;
+}
+
+.room-code {
+  font-size: 42px;
+  letter-spacing: 6px;
+  font-weight: bold;
+  background: #0f172a;
+  padding: 16px;
+  border-radius: 14px;
+  margin: 10px 0;
+}
+
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.player-list li {
+  background: #334155;
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+
+.small {
+  font-size: 14px;
 }
