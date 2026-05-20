@@ -30,13 +30,16 @@ const io = new Server(server, {
 });
 
 const rooms = {};
-
 const TURN_SECONDS = 30;
 
 const INDICATOR_TILE = {
   color: "yellow",
   number: 2,
 };
+
+function normalizeRoomCode(roomCode) {
+  return String(roomCode || "").trim().toUpperCase();
+}
 
 function createRoomCode() {
   let code = "";
@@ -71,10 +74,7 @@ function shuffleTiles(tiles) {
 
   for (let i = shuffled.length - 1; i > 0; i--) {
     const randomIndex = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[randomIndex]] = [
-      shuffled[randomIndex],
-      shuffled[i],
-    ];
+    [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]];
   }
 
   return shuffled;
@@ -204,10 +204,8 @@ function publicPlayerList(players) {
 }
 
 /*
-  Saat yönünün tersine sıra:
-  Oyuncu listesi: [1, 2, 3, 4]
-  1'den sonra sağındaki oyuncu gelsin istiyorsan index - 1 yapıyoruz.
-  1 -> 4 -> 3 -> 2 -> 1 şeklinde döner.
+  Saat yönünün tersine:
+  oyuncular [1,2,3,4] ise 1 -> 4 -> 3 -> 2 -> 1
 */
 function getCounterClockwiseNextPlayerId(room, currentPlayerId) {
   const currentIndex = room.players.findIndex(
@@ -228,7 +226,9 @@ function clearTurnTimer(room) {
 }
 
 function startTurnTimer(roomCode) {
-  const room = rooms[roomCode];
+  const code = normalizeRoomCode(roomCode);
+  const room = rooms[code];
+
   if (!room || !room.game) return;
 
   clearTurnTimer(room);
@@ -236,17 +236,19 @@ function startTurnTimer(roomCode) {
   room.game.turnDeadline = Date.now() + TURN_SECONDS * 1000;
 
   room.game.turnTimer = setTimeout(() => {
-    handleTurnTimeout(roomCode);
+    handleTurnTimeout(code);
   }, TURN_SECONDS * 1000);
 }
 
 function broadcastGame(roomCode) {
-  const room = rooms[roomCode];
+  const code = normalizeRoomCode(roomCode);
+  const room = rooms[code];
+
   if (!room || !room.game) return;
 
   room.players.forEach((player) => {
     io.to(player.id).emit("game-updated", {
-      roomCode,
+      roomCode: code,
       players: publicPlayerList(room.players),
       myPlayerId: player.id,
       myHand: room.game.hands[player.id] || [],
@@ -269,6 +271,11 @@ function drawTileForPlayer(room, playerId) {
   if (!room.game.deck.length) return null;
 
   const drawnTile = room.game.deck.shift();
+
+  if (!room.game.hands[playerId]) {
+    room.game.hands[playerId] = [];
+  }
+
   room.game.hands[playerId].push(drawnTile);
   room.game.lastDrawnTileByPlayerId[playerId] = drawnTile.id;
 
@@ -278,19 +285,22 @@ function drawTileForPlayer(room, playerId) {
 function discardTileForPlayer(room, playerId, tileId) {
   const hand = room.game.hands[playerId];
 
-  if (!hand) return null;
+  if (!hand || !hand.length) return null;
 
   let tileIndex = -1;
 
-  if (tileId) {
-    tileIndex = hand.findIndex((tile) => tile.id === tileId);
+  if (tileId !== undefined && tileId !== null) {
+    const numericTileId = Number(tileId);
+    tileIndex = hand.findIndex((tile) => Number(tile.id) === numericTileId);
   }
 
   if (tileIndex === -1) {
     const lastDrawnTileId = room.game.lastDrawnTileByPlayerId[playerId];
 
     if (lastDrawnTileId) {
-      tileIndex = hand.findIndex((tile) => tile.id === lastDrawnTileId);
+      tileIndex = hand.findIndex(
+        (tile) => Number(tile.id) === Number(lastDrawnTileId)
+      );
     }
   }
 
@@ -311,21 +321,26 @@ function discardTileForPlayer(room, playerId, tileId) {
 }
 
 function passTurn(roomCode, currentPlayerId) {
-  const room = rooms[roomCode];
+  const code = normalizeRoomCode(roomCode);
+  const room = rooms[code];
+
   if (!room || !room.game) return;
 
   room.game.currentTurnPlayerId = getCounterClockwiseNextPlayerId(
     room,
     currentPlayerId
   );
+
   room.game.turnPhase = "draw";
 
-  startTurnTimer(roomCode);
-  broadcastGame(roomCode);
+  startTurnTimer(code);
+  broadcastGame(code);
 }
 
 function handleTurnTimeout(roomCode) {
-  const room = rooms[roomCode];
+  const code = normalizeRoomCode(roomCode);
+  const room = rooms[code];
+
   if (!room || !room.game) return;
 
   const playerId = room.game.currentTurnPlayerId;
@@ -338,11 +353,13 @@ function handleTurnTimeout(roomCode) {
   }
 
   discardTileForPlayer(room, playerId);
-  passTurn(roomCode, playerId);
+  passTurn(code, playerId);
 }
 
 function startGame(roomCode) {
-  const room = rooms[roomCode];
+  const code = normalizeRoomCode(roomCode);
+  const room = rooms[code];
+
   if (!room || room.players.length !== 4) return;
 
   clearTurnTimer(room);
@@ -360,7 +377,6 @@ function startGame(roomCode) {
     deck: tiles,
     hands,
 
-    // İlk başlayan kişi 22 taş aldığı için taş çekmeden taş atacak.
     currentTurnPlayerId: room.players[0].id,
     turnPhase: "discard",
 
@@ -380,7 +396,7 @@ function startGame(roomCode) {
 
   room.players.forEach((player) => {
     io.to(player.id).emit("game-started", {
-      roomCode,
+      roomCode: code,
       players: publicPlayerList(room.players),
       myPlayerId: player.id,
       myHand: hands[player.id],
@@ -398,15 +414,25 @@ function startGame(roomCode) {
     });
   });
 
-  startTurnTimer(roomCode);
+  startTurnTimer(code);
 }
 
 function getRoomOrError(socket, roomCode) {
-  const code = String(roomCode || "").toUpperCase();
+  let code = normalizeRoomCode(roomCode);
+
+  if (!code && socket.data.roomCode) {
+    code = normalizeRoomCode(socket.data.roomCode);
+  }
+
   const room = rooms[code];
 
-  if (!room || !room.game || !room.game.started) {
-    socket.emit("error-message", "Oyun bulunamadı.");
+  if (!room) {
+    socket.emit("error-message", "Oyun bulunamadı. Server yeniden başladıysa yeni oda kurman gerekiyor.");
+    return null;
+  }
+
+  if (!room.game || !room.game.started) {
+    socket.emit("error-message", "Oyun henüz başlamadı.");
     return null;
   }
 
@@ -436,7 +462,7 @@ function openGroups(socket, roomCode, groups, mode) {
     return;
   }
 
-  const handMap = new Map(hand.map((tile) => [tile.id, tile]));
+  const handMap = new Map(hand.map((tile) => [Number(tile.id), tile]));
   const openedGroups = [];
   const usedIds = new Set();
 
@@ -448,7 +474,9 @@ function openGroups(socket, roomCode, groups, mode) {
 
     const tiles = [];
 
-    for (const tileId of groupIds) {
+    for (const rawTileId of groupIds) {
+      const tileId = Number(rawTileId);
+
       if (usedIds.has(tileId)) {
         socket.emit("error-message", "Aynı taşı iki kere açamazsın.");
         return;
@@ -481,9 +509,7 @@ function openGroups(socket, roomCode, groups, mode) {
     if (mode === "pairs") totalPairCount += 1;
 
     openedGroups.push({
-      id: `${socket.id}-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`,
+      id: `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       playerId: socket.id,
       tiles,
       score: evaluation.score,
@@ -511,7 +537,7 @@ function openGroups(socket, roomCode, groups, mode) {
     return;
   }
 
-  room.game.hands[socket.id] = hand.filter((tile) => !usedIds.has(tile.id));
+  room.game.hands[socket.id] = hand.filter((tile) => !usedIds.has(Number(tile.id)));
 
   if (mode === "series") {
     room.game.openedSeries.push(...openedGroups);
@@ -527,6 +553,8 @@ io.on("connection", (socket) => {
 
   socket.on("create-room", ({ name }) => {
     const roomCode = createRoomCode();
+
+    socket.data.roomCode = roomCode;
 
     rooms[roomCode] = {
       players: [
@@ -549,7 +577,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join-room", ({ name, roomCode }) => {
-    const code = String(roomCode || "").toUpperCase();
+    const code = normalizeRoomCode(roomCode);
 
     if (!rooms[code]) {
       socket.emit("error-message", "Böyle bir oda yok.");
@@ -566,6 +594,8 @@ io.on("connection", (socket) => {
       return;
     }
 
+    socket.data.roomCode = code;
+
     rooms[code].players.push({
       id: socket.id,
       name: name?.trim() || "Oyuncu",
@@ -581,7 +611,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("start-game", ({ roomCode }) => {
-    const code = String(roomCode || "").toUpperCase();
+    const code = normalizeRoomCode(roomCode || socket.data.roomCode);
 
     if (!rooms[code]) {
       socket.emit("error-message", "Oda bulunamadı.");
@@ -620,7 +650,6 @@ io.on("connection", (socket) => {
     drawTileForPlayer(room, socket.id);
     room.game.turnPhase = "discard";
 
-    // Taş çekince süre yeniden 30 saniyeye dönsün.
     startTurnTimer(code);
     broadcastGame(code);
   });
@@ -656,7 +685,6 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Taş atınca sıra kesinlikle sonraki oyuncuya geçer.
     passTurn(code, socket.id);
   });
 
