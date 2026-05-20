@@ -23,12 +23,10 @@ function App() {
 
   useEffect(() => {
     socket.on("connect", () => {
-      console.log("Socket bağlandı:", socket.id);
       setConnectionStatus("Server bağlı");
     });
 
-    socket.on("connect_error", (err) => {
-      console.log("Socket bağlantı hatası:", err.message);
+    socket.on("connect_error", () => {
       setConnectionStatus("Server bağlantı hatası");
     });
 
@@ -110,26 +108,40 @@ function App() {
   }
 
   function getTileClass(tile) {
+    if (!tile) return "tile";
     if (tile.fake) return "tile fake";
     return `tile ${tile.color}`;
   }
 
   function getTileText(tile) {
+    if (!tile) return "";
     if (tile.fake) return "S";
     return tile.number;
   }
 
+  const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
     (player) => player.id === currentTurnPlayerId
   );
 
+  const topPlayer = opponents[0];
+  const leftPlayer = opponents[1];
+  const rightPlayer = opponents[2];
+  const me = players.find((player) => player.id === myPlayerId);
+
   return (
     <div className="page">
       {!inRoom ? (
-        <div className="card">
-          <h1>Kanka Okey</h1>
-          <p>Arkadaşlarınla çipsiz 101 Okey oyna.</p>
-          <p className="small">{connectionStatus}</p>
+        <div className="home-card">
+          <div className="logo-row">
+            <div className="logo-chip">K</div>
+            <div>
+              <h1>Kanka Okey</h1>
+              <p>Oda kur, link at, çipsiz oyna.</p>
+            </div>
+          </div>
+
+          <p className="status">{connectionStatus}</p>
 
           <input
             placeholder="İsmini yaz"
@@ -137,7 +149,7 @@ function App() {
             onChange={(e) => setName(e.target.value)}
           />
 
-          <button onClick={createRoom}>Oda Oluştur</button>
+          <button onClick={createRoom}>Masa Kur</button>
 
           <div className="divider">veya</div>
 
@@ -152,7 +164,7 @@ function App() {
           </button>
         </div>
       ) : !gameStarted ? (
-        <div className="card">
+        <div className="home-card">
           <h1>Bekleme Odası</h1>
 
           <p>Oda kodu:</p>
@@ -165,12 +177,13 @@ function App() {
           <ul className="player-list">
             {players.map((player, index) => (
               <li key={player.id}>
-                {index + 1}. {player.name}
+                <span>{index + 1}</span>
+                {player.name}
               </li>
             ))}
           </ul>
 
-          <p className="small">{players.length}/4 kişi odada.</p>
+          <p className="status">{players.length}/4 kişi odada.</p>
 
           {players.length === 4 && (
             <button className="start" onClick={startGame}>
@@ -179,65 +192,156 @@ function App() {
           )}
         </div>
       ) : (
-        <div className="game-page">
-          <div className="game-header">
-            <div>
-              <h1>101 Okey</h1>
-              <p>Oda: {roomCode}</p>
+        <div className="okey-screen">
+          <div className="top-hud">
+            <button className="menu-btn">☰</button>
+
+            <div className="room-pill">
+              <span>Oda</span>
+              <strong>{roomCode}</strong>
             </div>
 
-            <div className="turn-box">
-              Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bilinmiyor"}
+            <div className="turn-pill">
+              Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}
+            </div>
+
+            <div className="mode-pill">Katlamasız</div>
+          </div>
+
+          <div className="okey-table">
+            <div className="table-felt">
+              {topPlayer && (
+                <div className="player-badge top-player">
+                  <div className="avatar">{topPlayer.name[0]}</div>
+                  <div>
+                    <strong>{topPlayer.name}</strong>
+                    <span>🟡 284</span>
+                  </div>
+                </div>
+              )}
+
+              {leftPlayer && (
+                <div className="player-badge left-player">
+                  <div className="avatar">{leftPlayer.name[0]}</div>
+                  <div>
+                    <strong>{leftPlayer.name}</strong>
+                    <span>🟡 222</span>
+                  </div>
+                </div>
+              )}
+
+              {rightPlayer && (
+                <div className="player-badge right-player">
+                  <div className="avatar">{rightPlayer.name[0]}</div>
+                  <div>
+                    <strong>{rightPlayer.name}</strong>
+                    <span>🟡 228</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="tile-count left-count">22</div>
+
+              <div className="opened-sets set-left">
+                <div className="mini-row">
+                  <span className="mini-tile red">10</span>
+                  <span className="mini-tile black">11</span>
+                  <span className="mini-tile blue">12</span>
+                </div>
+                <div className="mini-row">
+                  <span className="mini-tile blue">3</span>
+                  <span className="mini-tile blue">4</span>
+                  <span className="mini-tile blue">5</span>
+                  <span className="mini-tile blue">6</span>
+                </div>
+              </div>
+
+              <div className="opened-sets set-right">
+                <div className="mini-row">
+                  <span className="mini-tile red">2</span>
+                  <span className="mini-tile blue">2</span>
+                  <span className="mini-tile black">2</span>
+                </div>
+                <div className="mini-row">
+                  <span className="mini-tile red">12</span>
+                  <span className="mini-tile yellow">12</span>
+                  <span className="mini-tile black">12</span>
+                </div>
+              </div>
+
+              <div className="center-tools">
+                <div className="indicator-tile">
+                  <span>Gösterge</span>
+                  <div className="tile yellow">2</div>
+                </div>
+
+                <div className="deck-stack">
+                  <span>Deste</span>
+                  <strong>{deckCount}</strong>
+                </div>
+
+                <div className="discard-area">
+                  <span>Atılan</span>
+                  {discardedTile ? (
+                    <div className={getTileClass(discardedTile)}>
+                      {getTileText(discardedTile)}
+                    </div>
+                  ) : (
+                    <div className="tile back">?</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="quick-actions">
+                <button>✅</button>
+                <button>🛒</button>
+                <button>💬</button>
+                <button>😊</button>
+              </div>
+
+              <div className="side-actions">
+                <button>
+                  <strong>1 2 3</strong>
+                  Seri Diz
+                </button>
+                <button>
+                  <strong>5 5</strong>
+                  Çift Diz
+                </button>
+              </div>
+
+              <div className="my-player-card">
+                <div className="avatar">{me ? me.name[0] : "S"}</div>
+                <div>
+                  <strong>{me ? me.name : "Sen"}</strong>
+                  <span>🟡 266</span>
+                </div>
+              </div>
+
+              <div className="rack">
+                <div className="rack-row">
+                  {myHand.slice(0, 11).map((tile) => (
+                    <div className={getTileClass(tile)} key={tile.id}>
+                      {getTileText(tile)}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rack-row">
+                  {myHand.slice(11).map((tile) => (
+                    <div className={getTileClass(tile)} key={tile.id}>
+                      {getTileText(tile)}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="table-area">
-            <div className="opponents">
-              {players
-                .filter((player) => player.id !== myPlayerId)
-                .map((player) => (
-                  <div className="opponent-card" key={player.id}>
-                    <strong>{player.name}</strong>
-                    <span>21 taş</span>
-                  </div>
-                ))}
-            </div>
-
-            <div className="middle-table">
-              <div className="deck-box">
-                <span>Deste</span>
-                <strong>{deckCount}</strong>
-              </div>
-
-              <div className="discard-box">
-                <span>Atılan Taş</span>
-                {discardedTile ? (
-                  <div className={getTileClass(discardedTile)}>
-                    {getTileText(discardedTile)}
-                  </div>
-                ) : (
-                  <div className="empty-tile">Boş</div>
-                )}
-              </div>
-            </div>
-
-            <div className="my-area">
-              <h2>Senin Taşların</h2>
-
-              <div className="my-hand">
-                {myHand.map((tile) => (
-                  <div className={getTileClass(tile)} key={tile.id}>
-                    {getTileText(tile)}
-                  </div>
-                ))}
-              </div>
-
-              <div className="action-buttons">
-                <button>Taş Çek</button>
-                <button className="secondary">Taş At</button>
-                <button className="start">101 Aç</button>
-              </div>
-            </div>
+          <div className="bottom-actions">
+            <button>Taş Çek</button>
+            <button className="secondary">Taş At</button>
+            <button className="start">101 Aç</button>
           </div>
         </div>
       )}
