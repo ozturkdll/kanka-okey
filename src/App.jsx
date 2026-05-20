@@ -7,7 +7,6 @@ const socket = io("https://kanka-okey-server.onrender.com", {
 });
 
 const TILE_WIDTH = 42;
-const TILE_HEIGHT = 54;
 const ROW_1_Y = 10;
 const ROW_2_Y = 72;
 
@@ -64,6 +63,8 @@ function App() {
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
       setTilePositions(createInitialTilePositions(data.myHand));
+      setDraggingTile(null);
+      setIsOverMyDiscard(false);
     });
 
     socket.on("game-updated", (data) => {
@@ -235,11 +236,23 @@ function App() {
     const overDiscard = isPointerOverMyDiscardZone(e, e.currentTarget);
 
     if (overDiscard) {
+      if (currentTurnPlayerId !== myPlayerId) {
+        alert("Sıra sende değil.");
+        snapTileToRack(tile.id);
+        setDraggingTile(null);
+        setIsOverMyDiscard(false);
+        return;
+      }
+
       socket.emit("discard-tile", {
         roomCode,
         tileId: tile.id,
       });
 
+      // Taş kutuda rastgele kalmasın.
+      // Server kabul ederse zaten elden silinir.
+      // Reddedilirse ıstakaya geri dönmüş olur.
+      snapTileToRack(tile.id);
       setDraggingTile(null);
       setIsOverMyDiscard(false);
       return;
@@ -418,17 +431,17 @@ function App() {
 
               <div className="table-discard-zone top-left-discard-zone">
                 <span>Atılan</span>
-                <div className="empty-discard-slot">+</div>
+                <div className="empty-discard-slot"></div>
               </div>
 
               <div className="table-discard-zone top-right-discard-zone">
                 <span>Atılan</span>
-                <div className="empty-discard-slot">+</div>
+                <div className="empty-discard-slot"></div>
               </div>
 
               <div className="table-discard-zone bottom-left-discard-zone">
                 <span>Atılan</span>
-                <div className="empty-discard-slot">+</div>
+                <div className="empty-discard-slot"></div>
               </div>
 
               <div
@@ -442,7 +455,7 @@ function App() {
                     {getTileText(discardedTile)}
                   </div>
                 ) : (
-                  <div className="empty-discard-slot">+</div>
+                  <div className="empty-discard-slot"></div>
                 )}
               </div>
 
@@ -474,11 +487,6 @@ function App() {
                 <div className="rack-wood-top"></div>
 
                 <div className="rack-main">
-                  <div className="rack-lane-labels">
-                    <span>Üst sıra</span>
-                    <span>Alt sıra</span>
-                  </div>
-
                   <div className="free-rack-board" ref={rackBoardRef}>
                     <div className="rack-lane lane-top"></div>
                     <div className="rack-lane lane-bottom"></div>
