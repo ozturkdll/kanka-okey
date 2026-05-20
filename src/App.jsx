@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import "./App.css";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
   transports: ["websocket", "polling"],
 });
+
+const TILE_WIDTH = 42;
+const TILE_HEIGHT = 54;
+const ROW_1_Y = 10;
+const ROW_2_Y = 72;
 
 function App() {
   const [name, setName] = useState("");
@@ -23,6 +28,9 @@ function App() {
 
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
+  const [isOverMyDiscard, setIsOverMyDiscard] = useState(false);
+
+  const rackBoardRef = useRef(null);
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -67,6 +75,8 @@ function App() {
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
       setTilePositions(createInitialTilePositions(data.myHand));
+      setDraggingTile(null);
+      setIsOverMyDiscard(false);
     });
 
     socket.on("error-message", (message) => {
@@ -92,8 +102,8 @@ function App() {
       const col = row === 0 ? index : index - 11;
 
       positions[tile.id] = {
-        x: 12 + col * 48,
-        y: 10 + row * 62,
+        x: 12 + col * 52,
+        y: row === 0 ? ROW_1_Y : ROW_2_Y,
       };
     });
 
@@ -147,10 +157,48 @@ function App() {
     return tile.number;
   }
 
+  function getRackWidth() {
+    return rackBoardRef.current?.clientWidth || 700;
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function snapTileToRack(tileId) {
+    const boardWidth = getRackWidth();
+
+    setTilePositions((prev) => {
+      const current = prev[tileId] || { x: 12, y: ROW_1_Y };
+
+      const snappedY =
+        Math.abs(current.y - ROW_1_Y) < Math.abs(current.y - ROW_2_Y)
+          ? ROW_1_Y
+          : ROW_2_Y;
+
+      return {
+        ...prev,
+        [tileId]: {
+          x: clamp(current.x, 8, boardWidth - TILE_WIDTH - 8),
+          y: snappedY,
+        },
+      };
+    });
+  }
+
+  function isPointerOverMyDiscardZone(e, draggedElement) {
+    draggedElement.style.pointerEvents = "none";
+    const elementUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
+    draggedElement.style.pointerEvents = "";
+
+    return Boolean(elementUnderPointer?.closest(".my-table-discard-zone"));
+  }
+
   function handleTilePointerDown(e, tile) {
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    const currentPosition = tilePositions[tile.id] || { x: 0, y: 0 };
+    const currentPosition = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
 
     setDraggingTile({
       id: tile.id,
@@ -176,34 +224,43 @@ function App() {
         y: nextY,
       },
     }));
+
+    const overDiscard = isPointerOverMyDiscardZone(e, e.currentTarget);
+    setIsOverMyDiscard(overDiscard);
   }
 
   function handleTilePointerUp(e, tile) {
     if (!draggingTile || draggingTile.id !== tile.id) return;
 
-    const draggedElement = e.currentTarget;
-    draggedElement.style.pointerEvents = "none";
-    const elementUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
-    draggedElement.style.pointerEvents = "";
+    const overDiscard = isPointerOverMyDiscardZone(e, e.currentTarget);
 
-    const dropZone = elementUnderPointer?.closest(".my-table-discard-zone");
-
-    if (dropZone) {
+    if (overDiscard) {
       socket.emit("discard-tile", {
         roomCode,
         tileId: tile.id,
       });
+
+      setDraggingTile(null);
+      setIsOverMyDiscard(false);
+      return;
+    }
+
+    snapTileToRack(tile.id);
+    setDraggingTile(null);
+    setIsOverMyDiscard(false);
+  }
+
+  function handleTilePointerCancel(tile) {
+    if (tile) {
+      snapTileToRack(tile.id);
     }
 
     setDraggingTile(null);
-  }
-
-  function handleTilePointerCancel() {
-    setDraggingTile(null);
+    setIsOverMyDiscard(false);
   }
 
   function renderFreeTile(tile) {
-    const position = tilePositions[tile.id] || { x: 0, y: 0 };
+    const position = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
 
     return (
       <div
@@ -218,7 +275,7 @@ function App() {
         onPointerDown={(e) => handleTilePointerDown(e, tile)}
         onPointerMove={(e) => handleTilePointerMove(e, tile)}
         onPointerUp={(e) => handleTilePointerUp(e, tile)}
-        onPointerCancel={handleTilePointerCancel}
+        onPointerCancel={() => handleTilePointerCancel(tile)}
       >
         {getTileText(tile)}
       </div>
@@ -374,7 +431,11 @@ function App() {
                 <div className="empty-discard-slot">+</div>
               </div>
 
-              <div className="table-discard-zone my-table-discard-zone bottom-right-discard-zone">
+              <div
+                className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
+                  isOverMyDiscard ? "discard-zone-hover" : ""
+                }`}
+              >
                 <span>TAŞ AT</span>
                 {discardedTile ? (
                   <div className={getTileClass(discardedTile)}>
@@ -413,7 +474,14 @@ function App() {
                 <div className="rack-wood-top"></div>
 
                 <div className="rack-main">
-                  <div className="free-rack-board">
+                  <div className="rack-lane-labels">
+                    <span>Üst sıra</span>
+                    <span>Alt sıra</span>
+                  </div>
+
+                  <div className="free-rack-board" ref={rackBoardRef}>
+                    <div className="rack-lane lane-top"></div>
+                    <div className="rack-lane lane-bottom"></div>
                     {myHand.map((tile) => renderFreeTile(tile))}
                   </div>
                 </div>
