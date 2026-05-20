@@ -433,22 +433,34 @@ input:focus {
 
 .open-area-pairs {
   flex: 3;
-  min-width: 130px;
-  max-width: 170px;
-  padding: 26px 8px 8px;
+  min-width: 210px;
+  max-width: 260px;
+  padding: 30px 8px 8px;
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
-.pair-slot {
+.pair-section {
+  display: grid;
+  grid-template-rows: repeat(12, 1fr);
+  gap: 4px;
+  min-height: 0;
+}
+
+.pair-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  min-height: 0;
+}
+
+.pair-cell {
   border: 1px dashed rgba(255, 255, 255, 0.22);
-  border-radius: 8px;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    rgba(255, 255, 255, 0.025);
-  background-size: 24px 24px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.016);
+  min-height: 13px;
 }
 
 .open-area-label,
@@ -891,10 +903,23 @@ input:focus {
   }
 
   .open-area-pairs {
-    min-width: 110px;
-    max-width: 130px;
-    padding: 24px 6px 6px;
+    min-width: 170px;
+    max-width: 190px;
+    padding: 27px 6px 6px;
     gap: 6px;
+  }
+
+  .pair-section {
+    grid-template-rows: repeat(12, 1fr);
+    gap: 3px;
+  }
+
+  .pair-row {
+    gap: 3px;
+  }
+
+  .pair-cell {
+    min-height: 10px;
   }
 
   .bottom-right-discard-zone {
@@ -2019,6 +2044,19 @@ function App() {
     return 200 + (index + 1) * 17;
   }
 
+  function renderPairSection(sectionIndex) {
+    return (
+      <div className="pair-section" key={sectionIndex}>
+        {Array.from({ length: 12 }).map((_, rowIndex) => (
+          <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
+            <div className="pair-cell"></div>
+            <div className="pair-cell"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
     (player) => player.id === currentTurnPlayerId
@@ -2182,8 +2220,8 @@ function App() {
 
                   <div className="open-area-pairs">
                     <div className="open-area-right-label">Çifte Açılan</div>
-                    <div className="pair-slot"></div>
-                    <div className="pair-slot"></div>
+                    {renderPairSection(1)}
+                    {renderPairSection(2)}
                   </div>
                 </div>
 
