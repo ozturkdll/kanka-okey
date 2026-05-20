@@ -32,7 +32,7 @@ button {
 .page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(34, 197, 94, 0.16), transparent 35%),
+    radial-gradient(circle at top, rgba(34, 197, 94, 0.14), transparent 34%),
     linear-gradient(135deg, #07111f, #0f172a);
   display: flex;
   align-items: center;
@@ -255,7 +255,7 @@ input:focus {
   transform: translate(-50%, -50%) rotate(-5deg);
   font-size: 54px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.055);
   pointer-events: none;
 }
 
@@ -264,11 +264,11 @@ input:focus {
 .player-badge,
 .my-player-card {
   position: absolute;
-  z-index: 35;
+  z-index: 45;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 18px;
   padding: 10px 13px;
@@ -279,6 +279,10 @@ input:focus {
 .my-player-card strong {
   display: block;
   font-size: 14px;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .player-subtitle {
@@ -301,6 +305,7 @@ input:focus {
   justify-content: center;
   font-weight: 900;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .top-player {
@@ -310,33 +315,47 @@ input:focus {
 }
 
 .left-player {
-  left: 14px;
-  top: 115px;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  left: 16px;
+  top: 168px;
+  width: 72px;
+  height: 178px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 7px;
 }
 
-.left-player .avatar,
-.left-player div {
-  writing-mode: horizontal-tb;
-  transform: rotate(180deg);
+.left-player strong,
+.left-player .player-subtitle {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  max-height: 92px;
+  max-width: unset;
 }
 
 .right-player {
-  right: 14px;
-  top: 115px;
-  writing-mode: vertical-rl;
+  right: 16px;
+  top: 168px;
+  width: 72px;
+  height: 178px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 7px;
 }
 
-.right-player .avatar,
-.right-player div {
-  writing-mode: horizontal-tb;
-  transform: rotate(0deg);
+.right-player strong,
+.right-player .player-subtitle {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  max-height: 92px;
+  max-width: unset;
 }
 
 .my-player-card {
-  left: 16px;
-  bottom: 42px;
+  left: 50%;
+  bottom: 176px;
+  transform: translateX(-50%);
+  min-width: 160px;
+  justify-content: center;
 }
 
 .my-player-card.active-turn,
@@ -362,35 +381,35 @@ input:focus {
   border-radius: 999px;
 }
 
-/* CENTER OPEN AREA */
+/* OPEN AREA */
 
 .open-area {
   position: absolute;
-  left: 28%;
-  right: 22%;
-  top: 150px;
+  left: 27%;
+  right: 23%;
+  top: 148px;
   height: 190px;
   z-index: 5;
-  border: 2px solid rgba(217, 70, 239, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   background:
     linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    rgba(2, 6, 23, 0.08);
-  background-size: 42px 42px;
+    rgba(2, 6, 23, 0.07);
+  background-size: 34px 34px;
   box-shadow:
-    inset 0 0 35px rgba(255, 255, 255, 0.03),
-    0 0 20px rgba(217, 70, 239, 0.18);
+    inset 0 0 35px rgba(255, 255, 255, 0.025),
+    0 0 20px rgba(255, 255, 255, 0.04);
   pointer-events: none;
 }
 
 .open-area-label {
   position: absolute;
-  left: 12px;
-  top: -24px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
+  left: 10px;
+  top: -22px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 11px;
   font-weight: 900;
-  background: rgba(2, 6, 23, 0.55);
+  background: rgba(2, 6, 23, 0.45);
   border-radius: 999px;
   padding: 3px 8px;
 }
@@ -399,10 +418,9 @@ input:focus {
 
 .center-tools {
   position: absolute;
-  z-index: 30;
-  left: 50%;
+  z-index: 42;
+  right: 150px;
   bottom: 178px;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -455,7 +473,7 @@ input:focus {
 
 .table-discard-zone {
   position: absolute;
-  z-index: 40;
+  z-index: 44;
   width: 50px;
   height: 62px;
   padding: 0;
@@ -730,13 +748,17 @@ input:focus {
   }
 
   .left-player {
-    top: 90px;
+    top: 110px;
     left: 8px;
+    width: 66px;
+    height: 150px;
   }
 
   .right-player {
-    top: 90px;
+    top: 110px;
     right: 8px;
+    width: 66px;
+    height: 150px;
   }
 
   .player-badge {
@@ -771,7 +793,8 @@ input:focus {
   }
 
   .center-tools {
-    bottom: 170px;
+    right: 95px;
+    bottom: 162px;
   }
 
   .indicator-tile,
@@ -781,9 +804,10 @@ input:focus {
   }
 
   .my-player-card {
-    left: 8px;
-    bottom: 92px;
+    left: 50%;
+    bottom: 158px;
     padding: 7px;
+    min-width: 140px;
   }
 
   .rack {
@@ -794,14 +818,6 @@ input:focus {
 
   .free-rack-board {
     height: 126px;
-  }
-
-  .lane-top {
-    top: 7px;
-  }
-
-  .lane-bottom {
-    top: 65px;
   }
 
   .tile {
