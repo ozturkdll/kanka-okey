@@ -71,7 +71,10 @@ function shuffleTiles(tiles) {
 
   for (let i = shuffled.length - 1; i > 0; i--) {
     const randomIndex = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]];
+    [shuffled[i], shuffled[randomIndex]] = [
+      shuffled[randomIndex],
+      shuffled[i],
+    ];
   }
 
   return shuffled;
@@ -200,8 +203,16 @@ function publicPlayerList(players) {
   }));
 }
 
+/*
+  Saat yönünün tersine sıra:
+  Oyuncu listesi: [1, 2, 3, 4]
+  1'den sonra sağındaki oyuncu gelsin istiyorsan index - 1 yapıyoruz.
+  1 -> 4 -> 3 -> 2 -> 1 şeklinde döner.
+*/
 function getCounterClockwiseNextPlayerId(room, currentPlayerId) {
-  const currentIndex = room.players.findIndex((player) => player.id === currentPlayerId);
+  const currentIndex = room.players.findIndex(
+    (player) => player.id === currentPlayerId
+  );
 
   if (currentIndex === -1) return room.players[0]?.id || null;
 
@@ -303,8 +314,12 @@ function passTurn(roomCode, currentPlayerId) {
   const room = rooms[roomCode];
   if (!room || !room.game) return;
 
-  room.game.currentTurnPlayerId = getCounterClockwiseNextPlayerId(room, currentPlayerId);
+  room.game.currentTurnPlayerId = getCounterClockwiseNextPlayerId(
+    room,
+    currentPlayerId
+  );
   room.game.turnPhase = "draw";
+
   startTurnTimer(roomCode);
   broadcastGame(roomCode);
 }
@@ -330,6 +345,8 @@ function startGame(roomCode) {
   const room = rooms[roomCode];
   if (!room || room.players.length !== 4) return;
 
+  clearTurnTimer(room);
+
   const tiles = shuffleTiles(createTiles());
   const hands = {};
 
@@ -342,16 +359,22 @@ function startGame(roomCode) {
     started: true,
     deck: tiles,
     hands,
+
+    // İlk başlayan kişi 22 taş aldığı için taş çekmeden taş atacak.
     currentTurnPlayerId: room.players[0].id,
     turnPhase: "discard",
+
     turnDeadline: Date.now() + TURN_SECONDS * 1000,
     turnTimer: null,
+
     discardedTile: null,
     lastDiscardedByPlayerId: null,
     discardPiles: {},
     lastDrawnTileByPlayerId: {},
+
     openedSeries: [],
     openedPairs: [],
+
     indicatorTile: INDICATOR_TILE,
   };
 
@@ -458,7 +481,9 @@ function openGroups(socket, roomCode, groups, mode) {
     if (mode === "pairs") totalPairCount += 1;
 
     openedGroups.push({
-      id: `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: `${socket.id}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
       playerId: socket.id,
       tiles,
       score: evaluation.score,
@@ -471,12 +496,18 @@ function openGroups(socket, roomCode, groups, mode) {
   }
 
   if (mode === "series" && totalSeriesScore < 101) {
-    socket.emit("error-message", `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`);
+    socket.emit(
+      "error-message",
+      `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`
+    );
     return;
   }
 
   if (mode === "pairs" && totalPairCount < 5) {
-    socket.emit("error-message", `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`);
+    socket.emit(
+      "error-message",
+      `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`
+    );
     return;
   }
 
@@ -589,6 +620,7 @@ io.on("connection", (socket) => {
     drawTileForPlayer(room, socket.id);
     room.game.turnPhase = "discard";
 
+    // Taş çekince süre yeniden 30 saniyeye dönsün.
     startTurnTimer(code);
     broadcastGame(code);
   });
@@ -624,12 +656,16 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Taş atınca sıra kesinlikle sonraki oyuncuya geçer.
     passTurn(code, socket.id);
   });
 
   socket.on("disconnect", () => {
     for (const roomCode in rooms) {
       const room = rooms[roomCode];
+
+      if (!room) continue;
+
       room.players = room.players.filter((player) => player.id !== socket.id);
 
       io.to(roomCode).emit("players-updated", {
