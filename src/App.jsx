@@ -10,14 +10,17 @@ const SLOT_WIDTH = 45;
 const ROW_1_Y = 10;
 const ROW_2_Y = 70;
 
-const INDICATOR_TILE = {
-  color: "yellow",
-  number: 2,
-};
-
 const OPEN_ROWS = 12;
 const SERIES_COLS = 13;
 const PAIR_COLS = 2;
+
+const TILE_HEARTS = {
+  red: "♥",
+  blue: "♥",
+  black: "♥",
+  yellow: "♥",
+  fake: "★",
+};
 
 const styles = `
 * {
@@ -445,7 +448,6 @@ input:focus {
   z-index: 5;
   display: flex;
   gap: 8px;
-  pointer-events: none;
 }
 
 .open-area-main,
@@ -516,6 +518,12 @@ input:focus {
   justify-content: center;
 }
 
+.series-cell.drop-target,
+.pair-cell.drop-target {
+  background: rgba(34, 197, 94, 0.17);
+  border-color: rgba(34, 197, 94, 0.8);
+}
+
 .open-area-label,
 .open-area-right-label {
   position: absolute;
@@ -544,7 +552,7 @@ input:focus {
 
 .opened-tile {
   width: 18px;
-  height: 23px;
+  height: 24px;
   border-radius: 4px;
   background: #f8fafc;
   color: #020617;
@@ -552,9 +560,17 @@ input:focus {
   font-size: 11px;
   font-weight: 900;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: inset 0 -2px 0 rgba(0,0,0,.13);
+  cursor: pointer;
+  line-height: 0.9;
+}
+
+.opened-tile small {
+  font-size: 6px;
+  line-height: 1;
 }
 
 .opened-tile.red {
@@ -578,12 +594,16 @@ input:focus {
   border-color: #a855f7;
 }
 
+.opened-tile.joker-opened {
+  outline: 2px solid #facc15;
+}
+
 .hand-summary-box {
   position: absolute;
   z-index: 42;
-  right: 310px;
+  right: 278px;
   bottom: 204px;
-  width: 170px;
+  min-width: 205px;
   height: 34px;
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.78);
@@ -591,7 +611,7 @@ input:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 13px;
   padding: 0 12px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
@@ -610,7 +630,7 @@ input:focus {
 .center-tools {
   position: absolute;
   z-index: 42;
-  right: 110px;
+  right: 80px;
   bottom: 210px;
   display: flex;
   align-items: center;
@@ -619,8 +639,8 @@ input:focus {
 
 .indicator-tile,
 .deck-back-box {
-  width: 62px;
-  height: 70px;
+  width: 70px;
+  height: 76px;
   border-radius: 12px;
   background: rgba(2, 6, 23, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -872,16 +892,24 @@ input:focus {
   border-radius: 7px;
   color: #020617;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 19px;
+  gap: 1px;
+  font-size: 23px;
   font-weight: 900;
+  line-height: 0.9;
   cursor: grab;
   user-select: none;
   touch-action: none;
   box-shadow:
     inset 0 -4px 0 rgba(0, 0, 0, 0.13),
     0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+.tile small {
+  font-size: 9px;
+  line-height: 1;
 }
 
 .free-rack-board .tile {
@@ -907,6 +935,9 @@ input:focus {
 .center-static-tile {
   position: static !important;
   cursor: default !important;
+  width: 38px;
+  height: 46px;
+  font-size: 19px;
 }
 
 .tile.red {
@@ -962,7 +993,7 @@ input:focus {
 
 .score-modal,
 .result-modal {
-  width: min(520px, 100%);
+  width: min(560px, 100%);
   background: rgba(15, 23, 42, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 22px;
@@ -1131,6 +1162,10 @@ input:focus {
     font-size: 8px;
   }
 
+  .opened-tile small {
+    font-size: 5px;
+  }
+
   .top-left-discard-zone {
     left: 8px;
     top: 72px;
@@ -1152,9 +1187,9 @@ input:focus {
   }
 
   .hand-summary-box {
-    right: 176px;
+    right: 150px;
     bottom: 214px;
-    width: 140px;
+    min-width: 150px;
     height: 31px;
     gap: 8px;
   }
@@ -1164,7 +1199,7 @@ input:focus {
   }
 
   .center-tools {
-    right: 60px;
+    right: 44px;
     bottom: 222px;
     gap: 6px;
   }
@@ -1211,7 +1246,11 @@ input:focus {
   .tile {
     width: 34px;
     height: 48px;
-    font-size: 16px;
+    font-size: 20px;
+  }
+
+  .tile small {
+    font-size: 8px;
   }
 
   .empty-discard-slot {
@@ -1251,6 +1290,10 @@ function App() {
   const [takenDiscard, setTakenDiscard] = useState(null);
   const [mustUseTakenTileId, setMustUseTakenTileId] = useState(null);
 
+  const [indicatorTile, setIndicatorTile] = useState(null);
+  const [okeyTile, setOkeyTile] = useState(null);
+
+  const [myRemainingPoint, setMyRemainingPoint] = useState(null);
   const [handFinished, setHandFinished] = useState(false);
   const [handResult, setHandResult] = useState(null);
   const [totalScores, setTotalScores] = useState({});
@@ -1366,6 +1409,9 @@ function App() {
     setPlayerOpenTypes(data.playerOpenTypes || {});
     setTakenDiscard(data.takenDiscard || null);
     setMustUseTakenTileId(data.mustUseTakenTileId || null);
+    setIndicatorTile(data.indicatorTile || null);
+    setOkeyTile(data.okeyTile || null);
+    setMyRemainingPoint(data.myRemainingPoint);
     setHandFinished(Boolean(data.handFinished));
     setHandResult(data.handResult || null);
     setTotalScores(data.totalScores || {});
@@ -1388,23 +1434,19 @@ function App() {
     };
   }
 
-  function getOkeyNumber() {
-    return INDICATOR_TILE.number === 13 ? 1 : INDICATOR_TILE.number + 1;
-  }
-
   function isRealOkeyTile(tile) {
-    if (!tile || tile.fake) return false;
-    return tile.color === INDICATOR_TILE.color && tile.number === getOkeyNumber();
+    if (!tile || tile.fake || !okeyTile) return false;
+    return tile.color === okeyTile.color && tile.number === okeyTile.number;
   }
 
   function getEffectiveTile(tile) {
     if (!tile) return null;
 
-    if (tile.fake) {
+    if (tile.fake && okeyTile) {
       return {
         ...tile,
-        color: INDICATOR_TILE.color,
-        number: getOkeyNumber(),
+        color: okeyTile.color,
+        number: okeyTile.number,
         fakeAsReal: true,
       };
     }
@@ -1548,20 +1590,71 @@ function App() {
     if (!tile) return "tile";
     if (shouldShowTileBack(tile)) return "tile back-tile";
     if (tile.fake) return "tile fake";
-    return `tile ${tile.color}`;
+
+    const effective = getEffectiveTile(tile);
+    return `tile ${effective.color}`;
   }
 
-  function getOpenedTileClass(tile) {
-    if (!tile) return "opened-tile";
-    if (tile.fake) return "opened-tile fake";
-    return `opened-tile ${tile.color}`;
+  function getOpenedTileClass(entry) {
+    if (!entry || !entry.tile) return "opened-tile";
+
+    const tile = entry.tile;
+    const effective = entry.represents || getEffectiveTile(tile);
+
+    let className = "opened-tile";
+
+    if (tile.fake) className += " fake";
+    else className += ` ${effective.color}`;
+
+    if (entry.represents) {
+      className += " joker-opened";
+    }
+
+    return className;
   }
 
   function getTileText(tile) {
     if (!tile) return "";
     if (shouldShowTileBack(tile)) return "";
     if (tile.fake) return "S";
-    return tile.number;
+
+    const effective = getEffectiveTile(tile);
+    return effective.number;
+  }
+
+  function getOpenedTileText(entry) {
+    if (!entry || !entry.tile) return "";
+    if (entry.tile.fake) return "S";
+
+    if (entry.represents) {
+      return entry.represents.number;
+    }
+
+    const effective = getEffectiveTile(entry.tile);
+    return effective.number;
+  }
+
+  function getTileColorForHeart(tile) {
+    const effective = getEffectiveTile(tile);
+    return effective?.color || "black";
+  }
+
+  function getOpenedTileColorForHeart(entry) {
+    if (entry?.represents) return entry.represents.color;
+    return getTileColorForHeart(entry?.tile);
+  }
+
+  function renderTileInner(tile) {
+    const color = getTileColorForHeart(tile);
+
+    if (shouldShowTileBack(tile)) return null;
+
+    return (
+      <>
+        <span>{getTileText(tile)}</span>
+        <small>{TILE_HEARTS[color] || "♥"}</small>
+      </>
+    );
   }
 
   function getRackWidth() {
@@ -1695,12 +1788,18 @@ function App() {
     return clamp(targetSlot, 0, maxSlot);
   }
 
-  function isPointerOverMyDiscardZone(e, draggedElement) {
+  function getDropTargetFromPointer(e, draggedElement) {
     draggedElement.style.pointerEvents = "none";
     const elementUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
     draggedElement.style.pointerEvents = "";
 
-    return Boolean(elementUnderPointer?.closest(".my-table-discard-zone"));
+    const discardZone = elementUnderPointer?.closest(".my-table-discard-zone");
+    const openedCell = elementUnderPointer?.closest("[data-opened-group-id]");
+
+    return {
+      overDiscard: Boolean(discardZone),
+      openedGroupId: openedCell?.getAttribute("data-opened-group-id") || null,
+    };
   }
 
   function handleTilePointerDown(e, tile) {
@@ -1727,10 +1826,8 @@ function App() {
   function handleTilePointerMove(e, tile) {
     if (!draggingTile || draggingTile.id !== tile.id) return;
 
-    const nextX =
-      draggingTile.startTileX + (e.clientX - draggingTile.startPointerX);
-    const nextY =
-      draggingTile.startTileY + (e.clientY - draggingTile.startPointerY);
+    const nextX = draggingTile.startTileX + (e.clientX - draggingTile.startPointerX);
+    const nextY = draggingTile.startTileY + (e.clientY - draggingTile.startPointerY);
 
     setTilePositions((prev) => ({
       ...prev,
@@ -1740,8 +1837,8 @@ function App() {
       },
     }));
 
-    const overDiscard = isPointerOverMyDiscardZone(e, e.currentTarget);
-    setIsOverMyDiscard(overDiscard);
+    const target = getDropTargetFromPointer(e, e.currentTarget);
+    setIsOverMyDiscard(target.overDiscard);
   }
 
   function clearOkeyHold() {
@@ -1774,9 +1871,22 @@ function App() {
 
     if (!draggingTile || draggingTile.id !== tile.id) return;
 
-    const overDiscard = isPointerOverMyDiscardZone(e, e.currentTarget);
+    const target = getDropTargetFromPointer(e, e.currentTarget);
 
-    if (overDiscard) {
+    if (target.openedGroupId) {
+      socket.emit("process-tile", {
+        roomCode,
+        openedGroupId: target.openedGroupId,
+        tileId: tile.id,
+      });
+
+      snapTileToRack(tile.id);
+      setDraggingTile(null);
+      setIsOverMyDiscard(false);
+      return;
+    }
+
+    if (target.overDiscard) {
       if (currentTurnPlayerId !== myPlayerId) {
         alert("Sıra sende değil.");
         snapTileToRack(tile.id);
@@ -1925,23 +2035,17 @@ function App() {
     }
 
     if (group.length >= 3) {
-      const colors = ["yellow", "blue", "black", "red"];
       let bestRunScore = 0;
 
-      colors.forEach((color) => {
+      ["yellow", "blue", "black", "red"].forEach((color) => {
         for (let start = 1; start <= 14 - group.length; start++) {
-          const needed = Array.from(
-            { length: group.length },
-            (_, index) => start + index
-          );
-
+          const needed = Array.from({ length: group.length }, (_, index) => start + index);
           const usedIds = new Set();
           let missing = 0;
 
           needed.forEach((number) => {
             const found = normalTiles.find((tile) => {
               if (usedIds.has(tile.id)) return false;
-
               return tile.color === color && tile.number === number;
             });
 
@@ -2020,7 +2124,7 @@ function App() {
         ciftSayisi: 0,
       }
     );
-  }, [myHand, tilePositions]);
+  }, [myHand, tilePositions, okeyTile]);
 
   function applyLayoutWithGroups(groups) {
     const positions = {};
@@ -2249,7 +2353,7 @@ function App() {
         });
     }
 
-    if (mode === "pair" || mode === "doubleTiles") {
+    if (mode === "pair") {
       findPairsWithRealOkey();
       findSameNumberSetsWithRealOkey();
       findRunsWithRealOkey();
@@ -2376,7 +2480,7 @@ function App() {
         onPointerUp={(e) => handleTilePointerUp(e, tile)}
         onPointerCancel={() => handleTilePointerCancel(tile)}
       >
-        {getTileText(tile)}
+        {renderTileInner(tile)}
       </div>
     );
   }
@@ -2429,7 +2533,7 @@ function App() {
       >
         <span>{takeable ? "AL" : label}</span>
         {pileTile ? (
-          <div className={getTileClass(pileTile)}>{getTileText(pileTile)}</div>
+          <div className={getTileClass(pileTile)}>{renderTileInner(pileTile)}</div>
         ) : (
           <div className="empty-discard-slot"></div>
         )}
@@ -2437,45 +2541,69 @@ function App() {
     );
   }
 
-  function renderOpenedTile(tile) {
+  function renderOpenedTile(entry, group) {
+    const color = getOpenedTileColorForHeart(entry);
+
     return (
-      <div className={getOpenedTileClass(tile)} key={tile.id}>
-        {tile.fake ? "S" : tile.number}
+      <div
+        className={getOpenedTileClass(entry)}
+        key={entry.tile.id}
+        onClick={() => {
+          if (entry.represents) {
+            socket.emit("replace-joker", {
+              roomCode,
+              openedGroupId: group.id,
+              jokerTileId: entry.tile.id,
+            });
+          }
+        }}
+        title={entry.represents ? "Okeyi almak için tıkla" : ""}
+      >
+        <span>{getOpenedTileText(entry)}</span>
+        <small>{TILE_HEARTS[color] || "♥"}</small>
       </div>
     );
   }
 
-  function getOpenedSeriesTile(sectionIndex, rowIndex, colIndex) {
-    const groupIndex = sectionIndex === 1 ? rowIndex : OPEN_ROWS + rowIndex;
-    const group = openedSeries[groupIndex];
-    return group?.tiles?.[colIndex] || null;
+  function getOpenedEntry(group, slot) {
+    return group?.layout?.find((entry) => Number(entry.slot) === Number(slot)) || null;
   }
 
-  function getOpenedPairTile(sectionIndex, rowIndex, colIndex) {
+  function getSeriesGroup(sectionIndex, rowIndex) {
     const groupIndex = sectionIndex === 1 ? rowIndex : OPEN_ROWS + rowIndex;
-    const group = openedPairs[groupIndex];
-    return group?.tiles?.[colIndex] || null;
+    return openedSeries[groupIndex] || null;
+  }
+
+  function getPairGroup(sectionIndex, rowIndex) {
+    const groupIndex = sectionIndex === 1 ? rowIndex : OPEN_ROWS + rowIndex;
+    return openedPairs[groupIndex] || null;
   }
 
   function renderSeriesSection(sectionIndex) {
     return (
       <div className="series-section" key={sectionIndex}>
-        {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
-          <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
-            {Array.from({ length: SERIES_COLS }).map((__, colIndex) => {
-              const tile = getOpenedSeriesTile(sectionIndex, rowIndex, colIndex);
+        {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => {
+          const group = getSeriesGroup(sectionIndex, rowIndex);
 
-              return (
-                <div
-                  className="series-cell"
-                  key={`${sectionIndex}-${rowIndex}-${colIndex}`}
-                >
-                  {tile && renderOpenedTile(tile)}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+          return (
+            <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
+              {Array.from({ length: SERIES_COLS }).map((__, colIndex) => {
+                const slot = colIndex + 1;
+                const entry = getOpenedEntry(group, slot);
+
+                return (
+                  <div
+                    className={`series-cell ${group ? "drop-target" : ""}`}
+                    key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+                    data-opened-group-id={group?.id || ""}
+                  >
+                    {entry && renderOpenedTile(entry, group)}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -2483,22 +2611,28 @@ function App() {
   function renderPairSection(sectionIndex) {
     return (
       <div className="pair-section" key={sectionIndex}>
-        {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
-          <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
-            {Array.from({ length: PAIR_COLS }).map((__, colIndex) => {
-              const tile = getOpenedPairTile(sectionIndex, rowIndex, colIndex);
+        {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => {
+          const group = getPairGroup(sectionIndex, rowIndex);
 
-              return (
-                <div
-                  className="pair-cell"
-                  key={`${sectionIndex}-${rowIndex}-${colIndex}`}
-                >
-                  {tile && renderOpenedTile(tile)}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+          return (
+            <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
+              {Array.from({ length: PAIR_COLS }).map((__, colIndex) => {
+                const slot = colIndex + 1;
+                const entry = getOpenedEntry(group, slot);
+
+                return (
+                  <div
+                    className={`pair-cell ${group ? "drop-target" : ""}`}
+                    key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+                    data-opened-group-id={group?.id || ""}
+                  >
+                    {entry && renderOpenedTile(entry, group)}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -2507,7 +2641,13 @@ function App() {
     return players.map((player) => (
       <tr key={player.id}>
         <td>{player.name}</td>
-        <td>{playerOpenTypes[player.id] === "pairs" ? "Çift" : playerOpenTypes[player.id] === "series" ? "Seri" : "-"}</td>
+        <td>
+          {playerOpenTypes[player.id] === "pairs"
+            ? "Çift"
+            : playerOpenTypes[player.id] === "series"
+              ? "Seri"
+              : "-"}
+        </td>
         <td>{scoreSource?.[player.id] ?? 0}</td>
       </tr>
     ));
@@ -2665,11 +2805,11 @@ function App() {
                   </div>
                 )}
 
-                {renderDiscardZoneForPlayer(leftPlayer?.id, "top-left-discard-zone", "Atılan", {
+                {renderDiscardZoneForPlayer(topPlayer?.id, "top-left-discard-zone")}
+                {renderDiscardZoneForPlayer(rightPlayer?.id, "top-right-discard-zone")}
+                {renderDiscardZoneForPlayer(leftPlayer?.id, "bottom-left-discard-zone", "Atılan", {
                   takeable: canTakeLeftDiscard,
                 })}
-                {renderDiscardZoneForPlayer(topPlayer?.id, "top-right-discard-zone")}
-                {renderDiscardZoneForPlayer(rightPlayer?.id, "bottom-left-discard-zone")}
 
                 <div
                   className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
@@ -2679,7 +2819,7 @@ function App() {
                   <span>TAŞ AT</span>
                   {discardPiles[myPlayerId] ? (
                     <div className={getTileClass(discardPiles[myPlayerId])}>
-                      {getTileText(discardPiles[myPlayerId])}
+                      {renderTileInner(discardPiles[myPlayerId])}
                     </div>
                   ) : (
                     <div className="empty-discard-slot"></div>
@@ -2707,14 +2847,22 @@ function App() {
                   <div className="hand-summary-item">
                     Çift <strong>{liveHandSummary.ciftSayisi}</strong>
                   </div>
+                  <div className="hand-summary-item">
+                    Kalan <strong>{myRemainingPoint ?? "-"}</strong>
+                  </div>
                 </div>
 
                 <div className="center-tools">
                   <div className="indicator-tile">
                     <span>Gösterge</span>
-                    <div className="tile yellow center-static-tile">
-                      {INDICATOR_TILE.number}
-                    </div>
+                    {indicatorTile ? (
+                      <div className={`tile ${indicatorTile.color} center-static-tile`}>
+                        <span>{indicatorTile.number}</span>
+                        <small>{TILE_HEARTS[indicatorTile.color] || "♥"}</small>
+                      </div>
+                    ) : (
+                      <div className="deck-back-tile">?</div>
+                    )}
                   </div>
 
                   <div
@@ -2826,7 +2974,36 @@ function App() {
                 ))}
               </tbody>
             </table>
-            <p className="status">Yeni el birazdan başlayacak...</p>
+
+            {handResult.penaltyMessages?.length > 0 && (
+              <>
+                <h2 style={{ marginTop: 18 }}>Cezalar</h2>
+                <table className="score-table">
+                  <thead>
+                    <tr>
+                      <th>Oyuncu</th>
+                      <th>Sebep</th>
+                      <th>Ceza</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {handResult.penaltyMessages.map((penalty, index) => {
+                      const player = players.find((item) => item.id === penalty.playerId);
+
+                      return (
+                        <tr key={`${penalty.playerId}-${index}`}>
+                          <td>{player?.name || "Oyuncu"}</td>
+                          <td>{penalty.reason}</td>
+                          <td>{penalty.amount}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            <p className="status">Yeni el 10 saniye sonra başlayacak...</p>
           </div>
         </div>
       )}

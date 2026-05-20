@@ -30,14 +30,9 @@ const io = new Server(server, {
 });
 
 const rooms = {};
-
 const TURN_SECONDS = 30;
-const NEXT_HAND_DELAY_MS = 4000;
-
-const INDICATOR_TILE = {
-  color: "yellow",
-  number: 2,
-};
+const NEXT_HAND_DELAY_MS = 10000;
+const COLORS = ["red", "blue", "black", "yellow"];
 
 function normalizeRoomCode(roomCode) {
   return String(roomCode || "").trim().toUpperCase();
@@ -53,12 +48,22 @@ function createRoomCode() {
   return code;
 }
 
+function getNextNumber(number) {
+  return number === 13 ? 1 : number + 1;
+}
+
+function createRandomIndicator() {
+  return {
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    number: Math.floor(Math.random() * 13) + 1,
+  };
+}
+
 function createTiles() {
-  const colors = ["red", "blue", "black", "yellow"];
   const tiles = [];
   let id = 1;
 
-  for (const color of colors) {
+  for (const color of COLORS) {
     for (let number = 1; number <= 13; number++) {
       tiles.push({ id: id++, color, number, fake: false });
       tiles.push({ id: id++, color, number, fake: false });
@@ -82,23 +87,33 @@ function shuffleTiles(tiles) {
   return shuffled;
 }
 
-function getOkeyNumber() {
-  return INDICATOR_TILE.number === 13 ? 1 : INDICATOR_TILE.number + 1;
+function getOkeyTile(room) {
+  const indicator = room.game.indicatorTile;
+
+  return {
+    color: indicator.color,
+    number: getNextNumber(indicator.number),
+  };
 }
 
-function isRealOkeyTile(tile) {
+function isRealOkeyTile(room, tile) {
   if (!tile || tile.fake) return false;
-  return tile.color === INDICATOR_TILE.color && tile.number === getOkeyNumber();
+
+  const okeyTile = getOkeyTile(room);
+
+  return tile.color === okeyTile.color && tile.number === okeyTile.number;
 }
 
-function getEffectiveTile(tile) {
+function getEffectiveTile(room, tile) {
   if (!tile) return null;
 
   if (tile.fake) {
+    const okeyTile = getOkeyTile(room);
+
     return {
       ...tile,
-      color: INDICATOR_TILE.color,
-      number: getOkeyNumber(),
+      color: okeyTile.color,
+      number: okeyTile.number,
       fakeAsReal: true,
     };
   }
@@ -106,122 +121,18 @@ function getEffectiveTile(tile) {
   return tile;
 }
 
-function getTilePoint(tile) {
+function getTilePoint(room, tile) {
   if (!tile) return 0;
 
-  if (isRealOkeyTile(tile)) {
-    return getOkeyNumber();
-  }
-
   if (tile.fake) {
-    return getOkeyNumber();
+    return getOkeyTile(room).number;
   }
 
   return Number(tile.number || 0);
 }
 
-function getHandTotal(hand) {
-  return (hand || []).reduce((sum, tile) => sum + getTilePoint(tile), 0);
-}
-
-function evaluateGroup(group) {
-  if (!Array.isArray(group) || group.length < 2) {
-    return { type: "none", score: 0 };
-  }
-
-  const realOkeys = group.filter((tile) => isRealOkeyTile(tile));
-  const normalTiles = group
-    .filter((tile) => !isRealOkeyTile(tile))
-    .map((tile) => getEffectiveTile(tile));
-
-  if (group.length === 2) {
-    if (normalTiles.length === 2) {
-      const same =
-        normalTiles[0].color === normalTiles[1].color &&
-        normalTiles[0].number === normalTiles[1].number;
-
-      return {
-        type: same ? "pair" : "none",
-        score: same ? 1 : 0,
-      };
-    }
-
-    if (normalTiles.length === 1 && realOkeys.length === 1) {
-      return {
-        type: "pair",
-        score: 1,
-      };
-    }
-  }
-
-  if (group.length >= 3) {
-    const colors = ["yellow", "blue", "black", "red"];
-    let bestRunScore = 0;
-
-    colors.forEach((color) => {
-      for (let start = 1; start <= 14 - group.length; start++) {
-        const neededNumbers = Array.from(
-          { length: group.length },
-          (_, index) => start + index
-        );
-
-        const usedIds = new Set();
-        let missing = 0;
-
-        neededNumbers.forEach((number) => {
-          const found = normalTiles.find((tile) => {
-            if (usedIds.has(tile.id)) return false;
-            return tile.color === color && tile.number === number;
-          });
-
-          if (found) {
-            usedIds.add(found.id);
-          } else {
-            missing++;
-          }
-        });
-
-        if (missing === realOkeys.length && usedIds.size === normalTiles.length) {
-          const score = neededNumbers.reduce((sum, number) => sum + number, 0);
-          bestRunScore = Math.max(bestRunScore, score);
-        }
-      }
-    });
-
-    let bestSetScore = 0;
-
-    for (let number = 1; number <= 13; number++) {
-      const usedColors = new Set();
-      let valid = true;
-
-      normalTiles.forEach((tile) => {
-        if (tile.number !== number) {
-          valid = false;
-          return;
-        }
-
-        if (usedColors.has(tile.color)) {
-          valid = false;
-          return;
-        }
-
-        usedColors.add(tile.color);
-      });
-
-      if (valid && normalTiles.length + realOkeys.length === group.length) {
-        bestSetScore = Math.max(bestSetScore, number * group.length);
-      }
-    }
-
-    if (bestRunScore || bestSetScore) {
-      return {
-        type: "series",
-        score: Math.max(bestRunScore, bestSetScore),
-      };
-    }
-  }
-
-  return { type: "none", score: 0 };
+function getHandTotal(room, hand) {
+  return (hand || []).reduce((sum, tile) => sum + getTilePoint(room, tile), 0);
 }
 
 function publicPlayerList(players) {
@@ -232,39 +143,18 @@ function publicPlayerList(players) {
   }));
 }
 
-/*
-  Sabit sıra mantığı:
-  Oyuncular join sırasına göre masaya oturur.
-  App tarafında:
-  sen = alt
-  index + 1 = sağ
-  index + 2 = karşı
-  index + 3 = sol
-
-  Oynama sırası:
-  1 -> sağındaki -> sağındaki -> sağındaki
-  yani index + 1
-*/
 function getNextPlayerId(room, currentPlayerId) {
-  const currentIndex = room.players.findIndex(
-    (player) => player.id === currentPlayerId
-  );
-
+  const currentIndex = room.players.findIndex((player) => player.id === currentPlayerId);
   if (currentIndex === -1) return room.players[0]?.id || null;
 
-  const nextIndex = (currentIndex + 1) % room.players.length;
-  return room.players[nextIndex]?.id || null;
+  return room.players[(currentIndex + 1) % room.players.length]?.id || null;
 }
 
 function getPreviousPlayerId(room, currentPlayerId) {
-  const currentIndex = room.players.findIndex(
-    (player) => player.id === currentPlayerId
-  );
-
+  const currentIndex = room.players.findIndex((player) => player.id === currentPlayerId);
   if (currentIndex === -1) return null;
 
-  const previousIndex = (currentIndex - 1 + room.players.length) % room.players.length;
-  return room.players[previousIndex]?.id || null;
+  return room.players[(currentIndex - 1 + room.players.length) % room.players.length]?.id || null;
 }
 
 function clearTurnTimer(room) {
@@ -296,6 +186,20 @@ function startTurnTimer(roomCode) {
   }, TURN_SECONDS * 1000);
 }
 
+function getMyRemainingPoint(room, playerId) {
+  const openType = room.game.playerOpenTypes[playerId];
+
+  if (!openType) return null;
+
+  const total = getHandTotal(room, room.game.hands[playerId] || []);
+
+  if (openType === "pairs") {
+    return total * 2;
+  }
+
+  return total;
+}
+
 function broadcastGame(roomCode) {
   const code = normalizeRoomCode(roomCode);
   const room = rooms[code];
@@ -309,13 +213,12 @@ function broadcastGame(roomCode) {
       myPlayerId: player.id,
       myHand: room.game.hands[player.id] || [],
       deckCount: room.game.deck.length,
+
       currentTurnPlayerId: room.game.currentTurnPlayerId,
       turnPhase: room.game.turnPhase,
       turnDeadline: room.game.turnDeadline,
       turnSeconds: TURN_SECONDS,
 
-      discardedTile: room.game.discardedTile,
-      lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
       discardPiles: room.game.discardPiles,
 
       openedSeries: room.game.openedSeries,
@@ -323,9 +226,12 @@ function broadcastGame(roomCode) {
       playerOpenTypes: room.game.playerOpenTypes,
 
       indicatorTile: room.game.indicatorTile,
+      okeyTile: getOkeyTile(room),
 
       takenDiscard: room.game.takenDiscardByPlayerId[player.id] || null,
       mustUseTakenTileId: room.game.mustUseTakenTileIdByPlayerId[player.id] || null,
+
+      myRemainingPoint: getMyRemainingPoint(room, player.id),
 
       handFinished: room.game.handFinished,
       handResult: room.game.handResult,
@@ -333,6 +239,212 @@ function broadcastGame(roomCode) {
       handNumber: room.handNumber || 1,
     });
   });
+}
+
+function buildGroupLayout(room, tiles, mode) {
+  if (!Array.isArray(tiles) || tiles.length < 2) {
+    return null;
+  }
+
+  const realOkeys = tiles.filter((tile) => isRealOkeyTile(room, tile));
+  const normalTiles = tiles
+    .filter((tile) => !isRealOkeyTile(room, tile))
+    .map((tile) => ({
+      original: tile,
+      effective: getEffectiveTile(room, tile),
+    }));
+
+  if (mode === "pairs") {
+    if (tiles.length !== 2) return null;
+
+    if (realOkeys.length === 0) {
+      if (
+        normalTiles.length === 2 &&
+        normalTiles[0].effective.color === normalTiles[1].effective.color &&
+        normalTiles[0].effective.number === normalTiles[1].effective.number
+      ) {
+        return {
+          kind: "pair",
+          score: 1,
+          layout: [
+            { slot: 1, tile: normalTiles[0].original, represents: null },
+            { slot: 2, tile: normalTiles[1].original, represents: null },
+          ],
+        };
+      }
+
+      return null;
+    }
+
+    if (realOkeys.length === 1 && normalTiles.length === 1) {
+      return {
+        kind: "pair",
+        score: 1,
+        layout: [
+          { slot: 1, tile: normalTiles[0].original, represents: null },
+          {
+            slot: 2,
+            tile: realOkeys[0],
+            represents: {
+              color: normalTiles[0].effective.color,
+              number: normalTiles[0].effective.number,
+            },
+          },
+        ],
+      };
+    }
+
+    return null;
+  }
+
+  if (mode === "series") {
+    if (tiles.length < 3) return null;
+
+    const runResult = findBestRunLayout(room, tiles, normalTiles, realOkeys);
+    const setResult = findBestSetLayout(room, tiles, normalTiles, realOkeys);
+
+    if (!runResult && !setResult) return null;
+    if (runResult && !setResult) return runResult;
+    if (!runResult && setResult) return setResult;
+
+    return runResult.score >= setResult.score ? runResult : setResult;
+  }
+
+  return null;
+}
+
+function findBestRunLayout(room, tiles, normalTiles, realOkeys) {
+  let best = null;
+
+  for (const color of COLORS) {
+    for (let start = 1; start <= 14 - tiles.length; start++) {
+      const needed = Array.from({ length: tiles.length }, (_, index) => start + index);
+      const usedTileIds = new Set();
+      const layout = [];
+      let jokerIndex = 0;
+      let valid = true;
+
+      for (const number of needed) {
+        const found = normalTiles.find((item) => {
+          if (usedTileIds.has(item.original.id)) return false;
+          return item.effective.color === color && item.effective.number === number;
+        });
+
+        if (found) {
+          usedTileIds.add(found.original.id);
+          layout.push({
+            slot: number,
+            tile: found.original,
+            represents: null,
+          });
+        } else {
+          const joker = realOkeys[jokerIndex];
+
+          if (!joker) {
+            valid = false;
+            break;
+          }
+
+          jokerIndex++;
+
+          layout.push({
+            slot: number,
+            tile: joker,
+            represents: { color, number },
+          });
+        }
+      }
+
+      if (!valid) continue;
+
+      const score = needed.reduce((sum, number) => sum + number, 0);
+
+      if (!best || score > best.score) {
+        best = {
+          kind: "run",
+          color,
+          start,
+          end: start + tiles.length - 1,
+          score,
+          layout,
+        };
+      }
+    }
+  }
+
+  return best;
+}
+
+function findBestSetLayout(room, tiles, normalTiles, realOkeys) {
+  let best = null;
+
+  for (let number = 1; number <= 13; number++) {
+    const usedColors = new Set();
+    const naturalItems = [];
+    let valid = true;
+
+    for (const item of normalTiles) {
+      if (item.effective.number !== number) {
+        valid = false;
+        break;
+      }
+
+      if (usedColors.has(item.effective.color)) {
+        valid = false;
+        break;
+      }
+
+      usedColors.add(item.effective.color);
+      naturalItems.push(item);
+    }
+
+    if (!valid) continue;
+
+    const missingColors = COLORS.filter((color) => !usedColors.has(color));
+    if (missingColors.length < realOkeys.length) continue;
+
+    const chosenMissing = missingColors.slice(0, realOkeys.length);
+
+    const rawLayout = [
+      ...naturalItems.map((item) => ({
+        tile: item.original,
+        represents: null,
+      })),
+      ...realOkeys.map((joker, index) => ({
+        tile: joker,
+        represents: {
+          color: chosenMissing[index],
+          number,
+        },
+      })),
+    ];
+
+    const slots =
+      number === 13
+        ? [13, 12, 11, 10]
+        : [number, number + 1, number + 2, number + 3].map((slot) =>
+            Math.min(slot, 13)
+          );
+
+    const layout = rawLayout.map((entry, index) => ({
+      slot: slots[index] || Math.max(1, number - index),
+      tile: entry.tile,
+      represents: entry.represents,
+    }));
+
+    const score = number * tiles.length;
+
+    if (!best || score > best.score) {
+      best = {
+        kind: "set",
+        number,
+        score,
+        layout,
+      };
+    }
+  }
+
+  return best;
 }
 
 function drawTileForPlayer(room, playerId) {
@@ -386,9 +498,7 @@ function returnTakenDiscardForPlayer(room, playerId) {
   if (!taken || !taken.tile || !taken.fromPlayerId) return false;
 
   const hand = room.game.hands[playerId] || [];
-  const tileIndex = hand.findIndex(
-    (tile) => Number(tile.id) === Number(taken.tile.id)
-  );
+  const tileIndex = hand.findIndex((tile) => Number(tile.id) === Number(taken.tile.id));
 
   if (tileIndex === -1) return false;
 
@@ -404,6 +514,109 @@ function returnTakenDiscardForPlayer(room, playerId) {
   return true;
 }
 
+function isTileUsefulForAnyOpenGroup(room, tile) {
+  return [...room.game.openedSeries, ...room.game.openedPairs].some((group) =>
+    canProcessTileToGroup(room, tile, group)
+  );
+}
+
+function canProcessTileToGroup(room, tile, group) {
+  if (!tile || !group) return false;
+
+  const effective = getEffectiveTile(room, tile);
+
+  if (group.kind === "run") {
+    if (!effective || effective.color !== group.color) return false;
+
+    return effective.number === group.start - 1 || effective.number === group.end + 1;
+  }
+
+  if (group.kind === "set") {
+    if (!effective || effective.number !== group.number) return false;
+
+    const usedColors = new Set(
+      (group.layout || [])
+        .map((item) => item.represents?.color || getEffectiveTile(room, item.tile)?.color)
+        .filter(Boolean)
+    );
+
+    return !usedColors.has(effective.color);
+  }
+
+  if (group.kind === "pair") {
+    return false;
+  }
+
+  return false;
+}
+
+function processTileToGroup(room, playerId, groupId, tileId) {
+  const hand = room.game.hands[playerId] || [];
+  const tileIndex = hand.findIndex((tile) => Number(tile.id) === Number(tileId));
+
+  if (tileIndex === -1) {
+    return { ok: false, message: "İşlemek istediğin taş sende yok." };
+  }
+
+  const tile = hand[tileIndex];
+  const allGroups = [...room.game.openedSeries, ...room.game.openedPairs];
+  const group = allGroups.find((item) => item.id === groupId);
+
+  if (!group) {
+    return { ok: false, message: "İşlenecek per bulunamadı." };
+  }
+
+  if (!canProcessTileToGroup(room, tile, group)) {
+    return { ok: false, message: "Bu taş bu pere işlenemez." };
+  }
+
+  const effective = getEffectiveTile(room, tile);
+
+  hand.splice(tileIndex, 1);
+
+  if (group.kind === "run") {
+    if (effective.number === group.start - 1) {
+      group.start = effective.number;
+      group.layout.unshift({
+        slot: effective.number,
+        tile,
+        represents: null,
+      });
+    } else {
+      group.end = effective.number;
+      group.layout.push({
+        slot: effective.number,
+        tile,
+        represents: null,
+      });
+    }
+
+    group.score += effective.number;
+  }
+
+  if (group.kind === "set") {
+    const usedSlots = new Set(group.layout.map((item) => item.slot));
+    const preferredSlots =
+      group.number === 13
+        ? [13, 12, 11, 10]
+        : [group.number, group.number + 1, group.number + 2, group.number + 3].map((slot) =>
+            Math.min(slot, 13)
+          );
+
+    const slot = preferredSlots.find((item) => !usedSlots.has(item)) || group.number;
+
+    group.layout.push({
+      slot,
+      tile,
+      represents: null,
+    });
+
+    group.score += group.number;
+  }
+
+  return { ok: true };
+}
+
 function discardTileForPlayer(room, playerId, tileId) {
   const hand = room.game.hands[playerId];
 
@@ -412,17 +625,14 @@ function discardTileForPlayer(room, playerId, tileId) {
   let tileIndex = -1;
 
   if (tileId !== undefined && tileId !== null) {
-    const numericTileId = Number(tileId);
-    tileIndex = hand.findIndex((tile) => Number(tile.id) === numericTileId);
+    tileIndex = hand.findIndex((tile) => Number(tile.id) === Number(tileId));
   }
 
   if (tileIndex === -1) {
     const lastDrawnTileId = room.game.lastDrawnTileByPlayerId[playerId];
 
     if (lastDrawnTileId) {
-      tileIndex = hand.findIndex(
-        (tile) => Number(tile.id) === Number(lastDrawnTileId)
-      );
+      tileIndex = hand.findIndex((tile) => Number(tile.id) === Number(lastDrawnTileId));
     }
   }
 
@@ -432,10 +642,21 @@ function discardTileForPlayer(room, playerId, tileId) {
 
   if (tileIndex === -1) return null;
 
+  const tile = hand[tileIndex];
+
+  if (room.game.playerOpenTypes[playerId] && isTileUsefulForAnyOpenGroup(room, tile)) {
+    room.totalScores[playerId] = (room.totalScores[playerId] || 0) + 101;
+    room.game.penaltyMessages.push({
+      playerId,
+      amount: 101,
+      reason: "İşlek taş attı.",
+      tile,
+      createdAt: Date.now(),
+    });
+  }
+
   const [discardedTile] = hand.splice(tileIndex, 1);
 
-  room.game.discardedTile = discardedTile;
-  room.game.lastDiscardedByPlayerId = playerId;
   room.game.discardPiles[playerId] = discardedTile;
   room.game.lastDrawnTileByPlayerId[playerId] = null;
   room.game.drawSourceByPlayerId[playerId] = null;
@@ -457,7 +678,7 @@ function passTurn(roomCode, currentPlayerId) {
 }
 
 function calculateHandScores(room, winnerId = null, finishTile = null) {
-  const isOkeyFinish = Boolean(winnerId && isRealOkeyTile(finishTile));
+  const isOkeyFinish = Boolean(winnerId && isRealOkeyTile(room, finishTile));
   const handScores = {};
 
   room.players.forEach((player) => {
@@ -475,7 +696,7 @@ function calculateHandScores(room, winnerId = null, finishTile = null) {
       return;
     }
 
-    const handTotal = getHandTotal(hand);
+    const handTotal = getHandTotal(room, hand);
     let penalty = handTotal;
 
     if (openType === "pairs") {
@@ -513,17 +734,11 @@ function finishHand(roomCode, winnerId = null, finishTile = null, reason = "fini
 
   clearTurnTimer(room);
 
-  const { handScores, isOkeyFinish } = calculateHandScores(
-    room,
-    winnerId,
-    finishTile
-  );
+  const { handScores, isOkeyFinish } = calculateHandScores(room, winnerId, finishTile);
 
   applyScores(room, handScores);
 
-  const winner = winnerId
-    ? room.players.find((player) => player.id === winnerId)
-    : null;
+  const winner = winnerId ? room.players.find((player) => player.id === winnerId) : null;
 
   room.game.handFinished = true;
   room.game.handResult = {
@@ -534,6 +749,7 @@ function finishHand(roomCode, winnerId = null, finishTile = null, reason = "fini
     isOkeyFinish,
     handScores,
     totalScores: room.totalScores,
+    penaltyMessages: room.game.penaltyMessages,
     message: winner
       ? `${winner.name} eli bitirdi${isOkeyFinish ? " ve okey ile bitti!" : "!"}`
       : "Destede taş kalmadı. El bitti.",
@@ -610,6 +826,7 @@ function startNewHand(roomCode) {
   room.handNumber = handNumber;
 
   const starterIndex = (handNumber - 1) % room.players.length;
+  const indicatorTile = createRandomIndicator();
 
   room.players.forEach((player, index) => {
     const tileCount = index === starterIndex ? 22 : 21;
@@ -631,8 +848,6 @@ function startNewHand(roomCode) {
     turnTimer: null,
     nextHandTimer: null,
 
-    discardedTile: null,
-    lastDiscardedByPlayerId: null,
     discardPiles: {},
 
     lastDrawnTileByPlayerId: {},
@@ -645,7 +860,8 @@ function startNewHand(roomCode) {
     openedPairs: [],
     playerOpenTypes: {},
 
-    indicatorTile: INDICATOR_TILE,
+    indicatorTile,
+    penaltyMessages: [],
   };
 
   room.players.forEach((player) => {
@@ -661,8 +877,6 @@ function startNewHand(roomCode) {
       turnDeadline: room.game.turnDeadline,
       turnSeconds: TURN_SECONDS,
 
-      discardedTile: room.game.discardedTile,
-      lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
       discardPiles: room.game.discardPiles,
 
       openedSeries: room.game.openedSeries,
@@ -670,9 +884,11 @@ function startNewHand(roomCode) {
       playerOpenTypes: room.game.playerOpenTypes,
 
       indicatorTile: room.game.indicatorTile,
+      okeyTile: getOkeyTile(room),
 
       takenDiscard: null,
       mustUseTakenTileId: null,
+      myRemainingPoint: null,
 
       handFinished: false,
       handResult: null,
@@ -694,10 +910,7 @@ function getRoomOrError(socket, roomCode) {
   const room = rooms[code];
 
   if (!room) {
-    socket.emit(
-      "error-message",
-      "Oyun bulunamadı. Server yeniden başladıysa yeni oda kurman gerekiyor."
-    );
+    socket.emit("error-message", "Oyun bulunamadı. Server yeniden başladıysa yeni oda kurman gerekiyor.");
     return null;
   }
 
@@ -770,26 +983,27 @@ function openGroups(socket, roomCode, groups, mode) {
       usedIds.add(tileId);
     }
 
-    const evaluation = evaluateGroup(tiles);
+    const layoutResult = buildGroupLayout(room, tiles, mode);
 
-    if (mode === "series" && evaluation.type !== "series") {
-      socket.emit("error-message", "Geçersiz seri açmaya çalışıyorsun.");
+    if (!layoutResult) {
+      socket.emit("error-message", mode === "series" ? "Geçersiz seri açıyorsun." : "Geçersiz çift açıyorsun.");
       return;
     }
 
-    if (mode === "pairs" && evaluation.type !== "pair") {
-      socket.emit("error-message", "Geçersiz çift açmaya çalışıyorsun.");
-      return;
-    }
-
-    if (mode === "series") totalSeriesScore += evaluation.score;
+    if (mode === "series") totalSeriesScore += layoutResult.score;
     if (mode === "pairs") totalPairCount += 1;
 
     openedGroups.push({
       id: `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       playerId: socket.id,
-      tiles,
-      score: evaluation.score,
+      mode,
+      kind: layoutResult.kind,
+      color: layoutResult.color || null,
+      number: layoutResult.number || null,
+      start: layoutResult.start || null,
+      end: layoutResult.end || null,
+      score: layoutResult.score,
+      layout: layoutResult.layout,
     });
   }
 
@@ -799,10 +1013,7 @@ function openGroups(socket, roomCode, groups, mode) {
   }
 
   if (mustUseTileId && !usedIds.has(Number(mustUseTileId))) {
-    socket.emit(
-      "error-message",
-      "Yandan aldığın taşı açarken kullanmak zorundasın."
-    );
+    socket.emit("error-message", "Yandan aldığın taşı açarken kullanmak zorundasın.");
     return;
   }
 
@@ -810,25 +1021,17 @@ function openGroups(socket, roomCode, groups, mode) {
 
   if (!alreadyOpened) {
     if (mode === "series" && totalSeriesScore < 101) {
-      socket.emit(
-        "error-message",
-        `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`
-      );
+      socket.emit("error-message", `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`);
       return;
     }
 
     if (mode === "pairs" && totalPairCount < 5) {
-      socket.emit(
-        "error-message",
-        `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`
-      );
+      socket.emit("error-message", `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`);
       return;
     }
   }
 
-  room.game.hands[socket.id] = hand.filter(
-    (tile) => !usedIds.has(Number(tile.id))
-  );
+  room.game.hands[socket.id] = hand.filter((tile) => !usedIds.has(Number(tile.id)));
 
   if (mode === "series") {
     room.game.openedSeries.push(...openedGroups);
@@ -848,6 +1051,139 @@ function openGroups(socket, roomCode, groups, mode) {
     room.game.mustUseTakenTileIdByPlayerId[socket.id] = null;
     room.game.takenDiscardByPlayerId[socket.id] = null;
   }
+
+  broadcastGame(code);
+}
+
+function replaceJoker(socket, roomCode, openedGroupId, jokerTileId) {
+  const result = getRoomOrError(socket, roomCode);
+  if (!result) return;
+
+  const { room, code } = result;
+
+  if (room.game.currentTurnPlayerId !== socket.id) {
+    socket.emit("error-message", "Sıra sende değil.");
+    return;
+  }
+
+  if (!room.game.playerOpenTypes[socket.id]) {
+    socket.emit("error-message", "Okey almak için önce elini açmış olman lazım.");
+    return;
+  }
+
+  const allGroups = [...room.game.openedSeries, ...room.game.openedPairs];
+  const group = allGroups.find((item) => item.id === openedGroupId);
+
+  if (!group) {
+    socket.emit("error-message", "Okey alınacak per bulunamadı.");
+    return;
+  }
+
+  const jokerIndex = group.layout.findIndex(
+    (item) => Number(item.tile.id) === Number(jokerTileId) && item.represents
+  );
+
+  if (jokerIndex === -1) {
+    socket.emit("error-message", "Bu taş alınabilir okey değil.");
+    return;
+  }
+
+  const jokerEntry = group.layout[jokerIndex];
+  const hand = room.game.hands[socket.id] || [];
+
+  const requiredReplacements = [];
+
+  if (group.kind === "set") {
+    const naturalColors = new Set(
+      group.layout
+        .filter((item) => !item.represents)
+        .map((item) => getEffectiveTile(room, item.tile)?.color)
+        .filter(Boolean)
+    );
+
+    const missingColors = COLORS.filter((color) => !naturalColors.has(color));
+
+    if (naturalColors.size <= 2) {
+      missingColors.forEach((color) => {
+        requiredReplacements.push({ color, number: group.number });
+      });
+    } else {
+      requiredReplacements.push(jokerEntry.represents);
+    }
+  } else {
+    requiredReplacements.push(jokerEntry.represents);
+  }
+
+  const replacementTiles = [];
+  const usedHandIds = new Set();
+
+  for (const required of requiredReplacements) {
+    const found = hand.find((tile) => {
+      if (usedHandIds.has(tile.id)) return false;
+      if (isRealOkeyTile(room, tile)) return false;
+
+      const effective = getEffectiveTile(room, tile);
+
+      return effective.color === required.color && effective.number === required.number;
+    });
+
+    if (!found) {
+      socket.emit(
+        "error-message",
+        "Okeyi almak için gereken gerçek taşlar elinde yok."
+      );
+      return;
+    }
+
+    usedHandIds.add(found.id);
+    replacementTiles.push(found);
+  }
+
+  const ownerId = group.playerId;
+
+  if (ownerId && ownerId !== socket.id) {
+    room.totalScores[ownerId] = (room.totalScores[ownerId] || 0) + 101;
+    room.game.penaltyMessages.push({
+      playerId: ownerId,
+      amount: 101,
+      reason: "Okey çaldırdı.",
+      createdAt: Date.now(),
+    });
+  }
+
+  room.game.hands[socket.id] = hand.filter((tile) => !usedHandIds.has(tile.id));
+
+  const [removedJoker] = group.layout.splice(jokerIndex, 1);
+
+  if (group.kind === "set" && requiredReplacements.length > 1) {
+    const usedSlots = new Set(group.layout.map((item) => item.slot));
+    const preferredSlots =
+      group.number === 13
+        ? [13, 12, 11, 10]
+        : [group.number, group.number + 1, group.number + 2, group.number + 3].map((slot) =>
+            Math.min(slot, 13)
+          );
+
+    replacementTiles.forEach((tile) => {
+      const slot = preferredSlots.find((item) => !usedSlots.has(item)) || group.number;
+      usedSlots.add(slot);
+
+      group.layout.push({
+        slot,
+        tile,
+        represents: null,
+      });
+    });
+  } else {
+    group.layout.push({
+      slot: removedJoker.slot,
+      tile: replacementTiles[0],
+      represents: null,
+    });
+  }
+
+  group.layout.sort((a, b) => a.slot - b.slot);
+  room.game.hands[socket.id].push(removedJoker.tile);
 
   broadcastGame(code);
 }
@@ -1031,6 +1367,36 @@ io.on("connection", (socket) => {
 
   socket.on("open-pairs", ({ roomCode, groups }) => {
     openGroups(socket, roomCode, groups, "pairs");
+  });
+
+  socket.on("process-tile", ({ roomCode, openedGroupId, tileId }) => {
+    const result = getRoomOrError(socket, roomCode);
+    if (!result) return;
+
+    const { room, code } = result;
+
+    if (room.game.currentTurnPlayerId !== socket.id) {
+      socket.emit("error-message", "Sıra sende değil.");
+      return;
+    }
+
+    if (!room.game.playerOpenTypes[socket.id]) {
+      socket.emit("error-message", "Taş işlemek için önce elini açmalısın.");
+      return;
+    }
+
+    const processed = processTileToGroup(room, socket.id, openedGroupId, tileId);
+
+    if (!processed.ok) {
+      socket.emit("error-message", processed.message);
+      return;
+    }
+
+    broadcastGame(code);
+  });
+
+  socket.on("replace-joker", ({ roomCode, openedGroupId, jokerTileId }) => {
+    replaceJoker(socket, roomCode, openedGroupId, jokerTileId);
   });
 
   socket.on("discard-tile", ({ roomCode, tileId }) => {
