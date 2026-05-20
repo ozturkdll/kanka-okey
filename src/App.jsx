@@ -243,7 +243,7 @@ input:focus {
 
 .table-felt {
   position: relative;
-  min-height: 640px;
+  min-height: 720px;
   border-radius: 26px;
   overflow: hidden;
   background:
@@ -388,7 +388,7 @@ input:focus {
 
 .my-player-card {
   left: 50%;
-  bottom: 198px;
+  bottom: 218px;
   transform: translateX(-50%);
   min-width: 126px;
   height: 42px;
@@ -420,8 +420,8 @@ input:focus {
   position: absolute;
   left: 96px;
   right: 96px;
-  top: 52px;
-  bottom: 238px;
+  top: 62px;
+  bottom: 330px;
   z-index: 5;
   display: flex;
   gap: 10px;
@@ -463,10 +463,6 @@ input:focus {
   display: grid;
   min-height: 0;
   gap: 5px;
-}
-
-.series-section,
-.pair-section {
   grid-template-rows: repeat(12, 1fr);
 }
 
@@ -516,6 +512,7 @@ input:focus {
   border-radius: 999px;
   padding: 3px 10px;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 .opened-tile {
@@ -562,11 +559,11 @@ input:focus {
   outline-offset: -2px;
 }
 
-.hand-summary-box {.hand-summary-box {
+.hand-summary-box {.hand-summary-box {.hand-summary-box {
   position: absolute;
   z-index: 42;
   right: 278px;
-  bottom: 204px;
+  bottom: 218px;
   min-width: 205px;
   height: 34px;
   border-radius: 999px;
@@ -595,7 +592,7 @@ input:focus {
   position: absolute;
   z-index: 42;
   right: 80px;
-  bottom: 210px;
+  bottom: 220px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -706,12 +703,12 @@ input:focus {
 
 .bottom-left-discard-zone {
   left: 18px;
-  bottom: 210px;
+  bottom: 230px;
 }
 
 .bottom-right-discard-zone {
   right: 18px;
-  bottom: 210px;
+  bottom: 230px;
 }
 
 .my-table-discard-zone {
@@ -1085,7 +1082,7 @@ input:focus {
   }
 
   .table-felt {
-    min-height: 690px;
+    min-height: 760px;
     border-radius: 18px;
   }
 
@@ -1118,7 +1115,7 @@ input:focus {
     left: 78px;
     right: 78px;
     top: 58px;
-    bottom: 285px;
+    bottom: 335px;
     gap: 6px;
   }
 
@@ -1175,7 +1172,7 @@ input:focus {
 
   .hand-summary-box {
     right: 150px;
-    bottom: 214px;
+    bottom: 238px;
     min-width: 150px;
     height: 31px;
     gap: 8px;
@@ -1187,7 +1184,7 @@ input:focus {
 
   .center-tools {
     right: 44px;
-    bottom: 222px;
+    bottom: 242px;
     gap: 6px;
   }
 
@@ -1198,7 +1195,7 @@ input:focus {
   }
 
   .my-player-card {
-    bottom: 206px;
+    bottom: 230px;
     padding: 3px 7px;
     min-width: 112px;
     height: 38px;
