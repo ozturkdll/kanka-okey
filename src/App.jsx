@@ -200,8 +200,7 @@ input:focus {
 
 .room-pill,
 .turn-pill,
-.mode-pill,
-.timer-pill {
+.mode-pill {
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
@@ -221,18 +220,6 @@ input:focus {
 
 .turn-pill.my-turn {
   background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: white;
-}
-
-.timer-pill {
-  min-width: 72px;
-  text-align: center;
-  font-weight: 900;
-  color: #facc15;
-}
-
-.timer-pill.danger {
-  background: linear-gradient(135deg, #ef4444, #991b1b);
   color: white;
 }
 
@@ -284,10 +271,38 @@ input:focus {
   align-items: center;
   gap: 10px;
   background: rgba(15, 23, 42, 0.93);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 3px solid rgba(255, 255, 255, 0.16);
   border-radius: 18px;
-  padding: 10px 13px;
+  padding: 8px 11px;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.player-badge.active-turn,
+.my-player-card.active-turn {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.96)) padding-box,
+    conic-gradient(
+      #22c55e var(--turn-progress, 360deg),
+      rgba(255, 255, 255, 0.18) 0deg
+    ) border-box;
+  box-shadow:
+    0 0 24px rgba(34, 197, 94, 0.8),
+    0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+.player-badge.active-turn::after,
+.my-player-card.active-turn::after {
+  content: "SIRA";
+  position: absolute;
+  top: -15px;
+  right: 10px;
+  background: #22c55e;
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 7px;
+  border-radius: 999px;
 }
 
 .player-badge strong,
@@ -345,7 +360,7 @@ input:focus {
   height: 172px;
   flex-direction: column;
   justify-content: center;
-  padding: 10px 7px;
+  padding: 8px 5px;
 }
 
 .left-player .player-info,
@@ -369,7 +384,7 @@ input:focus {
   height: 172px;
   flex-direction: column;
   justify-content: center;
-  padding: 10px 7px;
+  padding: 8px 5px;
 }
 
 .right-player strong,
@@ -387,7 +402,7 @@ input:focus {
   min-width: 138px;
   height: 42px;
   justify-content: center;
-  padding: 5px 10px;
+  padding: 4px 8px;
   gap: 7px;
   border-radius: 14px;
 }
@@ -412,29 +427,6 @@ input:focus {
 .my-player-card .player-info,
 .top-player .player-info {
   align-items: flex-start;
-}
-
-.my-player-card.active-turn,
-.player-badge.active-turn {
-  box-shadow:
-    0 0 0 3px rgba(34, 197, 94, 0.9),
-    0 0 32px rgba(34, 197, 94, 0.85),
-    0 14px 30px rgba(0, 0, 0, 0.35);
-  border-color: rgba(34, 197, 94, 0.95);
-}
-
-.my-player-card.active-turn::after,
-.player-badge.active-turn::after {
-  content: "SIRA";
-  position: absolute;
-  top: -14px;
-  right: 10px;
-  background: #22c55e;
-  color: white;
-  font-size: 10px;
-  font-weight: 900;
-  padding: 3px 7px;
-  border-radius: 999px;
 }
 
 .open-area {
@@ -985,7 +977,7 @@ input:focus {
   }
 
   .player-badge {
-    padding: 7px 9px;
+    padding: 6px 7px;
     gap: 7px;
   }
 
@@ -1086,7 +1078,7 @@ input:focus {
 
   .my-player-card {
     bottom: 206px;
-    padding: 4px 8px;
+    padding: 3px 7px;
     min-width: 120px;
     height: 38px;
   }
@@ -1153,8 +1145,6 @@ function App() {
   const [turnSeconds, setTurnSeconds] = useState(30);
   const [timeLeft, setTimeLeft] = useState(30);
 
-  const [discardedTile, setDiscardedTile] = useState(null);
-  const [lastDiscardedByPlayerId, setLastDiscardedByPlayerId] = useState(null);
   const [discardPiles, setDiscardPiles] = useState({});
   const [openedSeries, setOpenedSeries] = useState([]);
   const [openedPairs, setOpenedPairs] = useState([]);
@@ -1219,8 +1209,6 @@ function App() {
           [pending.tile.id]: pending.position,
         }));
 
-        setDiscardedTile(pending.previousDiscardedTile);
-        setLastDiscardedByPlayerId(pending.previousLastDiscardedByPlayerId);
         setDiscardPiles(pending.previousDiscardPiles || {});
         pendingDiscardRef.current = null;
       }
@@ -1249,7 +1237,7 @@ function App() {
     }
 
     updateTimer();
-    const timer = setInterval(updateTimer, 250);
+    const timer = setInterval(updateTimer, 100);
 
     return () => clearInterval(timer);
   }, [turnDeadline, turnSeconds]);
@@ -1264,14 +1252,25 @@ function App() {
     setTurnPhase(data.turnPhase || "draw");
     setTurnDeadline(data.turnDeadline || null);
     setTurnSeconds(data.turnSeconds || 30);
-    setDiscardedTile(data.discardedTile || null);
-    setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
     setDiscardPiles(data.discardPiles || {});
     setOpenedSeries(data.openedSeries || []);
     setOpenedPairs(data.openedPairs || []);
     setDraggingTile(null);
     setIsOverMyDiscard(false);
     pendingDiscardRef.current = null;
+  }
+
+  function getTurnProgressDegrees() {
+    const total = turnSeconds || 30;
+    const ratio = Math.max(0, Math.min(1, timeLeft / total));
+    return ratio * 360;
+  }
+
+  function getTurnRingStyle(playerId) {
+    if (playerId !== currentTurnPlayerId) return {};
+    return {
+      "--turn-progress": `${getTurnProgressDegrees()}deg`,
+    };
   }
 
   function getOkeyNumber() {
@@ -1662,25 +1661,21 @@ function App() {
       }
 
       const previousPosition = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
-      const previousDiscardedTile = discardedTile;
-      const previousLastDiscardedByPlayerId = lastDiscardedByPlayerId;
       const previousDiscardPiles = discardPiles;
 
       pendingDiscardRef.current = {
         tile,
         position: previousPosition,
-        previousDiscardedTile,
-        previousLastDiscardedByPlayerId,
         previousDiscardPiles,
       };
 
-      setDiscardedTile(tile);
-      setLastDiscardedByPlayerId(myPlayerId);
       setDiscardPiles((prev) => ({
         ...prev,
         [myPlayerId]: tile,
       }));
+
       setMyHand((prev) => prev.filter((handTile) => handTile.id !== tile.id));
+
       setTilePositions((prev) => {
         const next = { ...prev };
         delete next[tile.id];
@@ -2434,10 +2429,6 @@ function App() {
                 / {turnPhase === "draw" ? "Taş çek" : "Taş at"}
               </div>
 
-              <div className={`timer-pill ${timeLeft <= 5 ? "danger" : ""}`}>
-                {timeLeft}s
-              </div>
-
               <div className="mode-pill">Katlamasız</div>
             </div>
 
@@ -2448,6 +2439,7 @@ function App() {
                     className={`player-badge top-player ${
                       currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
                     }`}
+                    style={getTurnRingStyle(topPlayer.id)}
                   >
                     <div className="avatar">{topPlayer.name[0]}</div>
                     <div className="player-info">
@@ -2464,6 +2456,7 @@ function App() {
                     className={`player-badge left-player ${
                       currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
                     }`}
+                    style={getTurnRingStyle(leftPlayer.id)}
                   >
                     <div className="avatar">{leftPlayer.name[0]}</div>
                     <div className="player-info">
@@ -2480,6 +2473,7 @@ function App() {
                     className={`player-badge right-player ${
                       currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
                     }`}
+                    style={getTurnRingStyle(rightPlayer.id)}
                   >
                     <div className="avatar">{rightPlayer.name[0]}</div>
                     <div className="player-info">
@@ -2555,6 +2549,7 @@ function App() {
                   className={`my-player-card ${
                     currentTurnPlayerId === myPlayerId ? "active-turn" : ""
                   }`}
+                  style={getTurnRingStyle(myPlayerId)}
                 >
                   <div className="avatar">{me ? me.name[0] : "S"}</div>
                   <div className="player-info">
