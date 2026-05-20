@@ -16,10 +16,18 @@ const PAIR_COLS = 2;
 
 const TILE_HEARTS = {
   red: "♥",
-  blue: "♥",
-  black: "♥",
-  yellow: "♥",
+  blue: "●",
+  black: "♣",
+  yellow: "♦",
   fake: "★",
+};
+
+const TILE_COLOR_LABELS = {
+  red: "K",
+  blue: "M",
+  black: "S",
+  yellow: "SA",
+  fake: "S",
 };
 
 const styles = `
@@ -551,13 +559,13 @@ input:focus {
 }
 
 .opened-tile {
-  width: 18px;
-  height: 24px;
+  width: 19px;
+  height: 27px;
   border-radius: 4px;
   background: #f8fafc;
   color: #020617;
   border: 1px solid #e2e8f0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   display: flex;
   flex-direction: column;
@@ -565,12 +573,20 @@ input:focus {
   justify-content: center;
   box-shadow: inset 0 -2px 0 rgba(0,0,0,.13);
   cursor: pointer;
-  line-height: 0.9;
+  line-height: 0.85;
 }
 
 .opened-tile small {
   font-size: 6px;
   line-height: 1;
+  font-weight: 900;
+}
+
+.opened-color-tag {
+  font-size: 5px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .opened-tile.red {
@@ -700,8 +716,8 @@ input:focus {
 .table-discard-zone {
   position: absolute;
   z-index: 44;
-  width: 48px;
-  height: 60px;
+  width: 52px;
+  height: 66px;
   padding: 0;
   border-radius: 9px;
   border: 2px dashed rgba(255, 255, 255, 0.55);
@@ -895,10 +911,10 @@ input:focus {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 0;
   font-size: 23px;
   font-weight: 900;
-  line-height: 0.9;
+  line-height: 0.86;
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -910,6 +926,15 @@ input:focus {
 .tile small {
   font-size: 9px;
   line-height: 1;
+  font-weight: 900;
+  opacity: 0.95;
+}
+
+.tile-color-tag {
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .free-rack-board .tile {
@@ -935,9 +960,9 @@ input:focus {
 .center-static-tile {
   position: static !important;
   cursor: default !important;
-  width: 38px;
-  height: 46px;
-  font-size: 19px;
+  width: 42px;
+  height: 52px;
+  font-size: 22px;
 }
 
 .tile.red {
@@ -1157,13 +1182,17 @@ input:focus {
   }
 
   .opened-tile {
-    width: 13px;
-    height: 18px;
-    font-size: 8px;
+    width: 15px;
+    height: 21px;
+    font-size: 9px;
   }
 
   .opened-tile small {
     font-size: 5px;
+  }
+
+  .opened-color-tag {
+    font-size: 4px;
   }
 
   .top-left-discard-zone {
@@ -1206,8 +1235,8 @@ input:focus {
 
   .indicator-tile,
   .deck-back-box {
-    width: 50px;
-    height: 62px;
+    width: 56px;
+    height: 66px;
   }
 
   .my-player-card {
@@ -1253,14 +1282,18 @@ input:focus {
     font-size: 8px;
   }
 
+  .tile-color-tag {
+    font-size: 7px;
+  }
+
   .empty-discard-slot {
     width: 34px;
     height: 48px;
   }
 
   .table-discard-zone {
-    width: 42px;
-    height: 56px;
+    width: 44px;
+    height: 58px;
   }
 }
 `;
@@ -1653,6 +1686,7 @@ function App() {
       <>
         <span>{getTileText(tile)}</span>
         <small>{TILE_HEARTS[color] || "♥"}</small>
+        <span className="tile-color-tag">{TILE_COLOR_LABELS[color] || ""}</span>
       </>
     );
   }
@@ -2561,6 +2595,7 @@ function App() {
       >
         <span>{getOpenedTileText(entry)}</span>
         <small>{TILE_HEARTS[color] || "♥"}</small>
+        <span className="opened-color-tag">{TILE_COLOR_LABELS[color] || ""}</span>
       </div>
     );
   }
@@ -2859,6 +2894,9 @@ function App() {
                       <div className={`tile ${indicatorTile.color} center-static-tile`}>
                         <span>{indicatorTile.number}</span>
                         <small>{TILE_HEARTS[indicatorTile.color] || "♥"}</small>
+                        <span className="tile-color-tag">
+                          {TILE_COLOR_LABELS[indicatorTile.color] || ""}
+                        </span>
                       </div>
                     ) : (
                       <div className="deck-back-tile">?</div>
