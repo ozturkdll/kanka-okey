@@ -2440,7 +2440,7 @@ function App() {
     }
 
     if (!playerOpenTypes[myPlayerId] && totalScore < 101) {
-      alert(\`Seri açmak için en az 101 lazım. Şu an: ${totalScore}`);
+      alert(`Seri açmak için en az 101 lazım. Şu an: ${totalScore}`);
       return;
     }
 
@@ -2466,7 +2466,7 @@ function App() {
     }
 
     if (!playerOpenTypes[myPlayerId] && validGroups.length < 5) {
-      alert(\`Çift açmak için en az 5 çift lazım. Şu an: \${validGroups.length}\`);
+      alert(`Çift açmak için en az 5 çift lazım. Şu an: ${validGroups.length}`);
       return;
     }
 
@@ -2482,10 +2482,10 @@ function App() {
     return (
       <div
         key={tile.id}
-        className={\`\${getTileClass(tile)} \${draggingTile?.id === tile.id ? "dragging-tile" : ""}\`}
+        className={`${getTileClass(tile)} ${draggingTile?.id === tile.id ? "dragging-tile" : ""}`}
         style={{
-          left: \`\${position.x}px\`,
-          top: \`\${position.y}px\`,
+          left: `${position.x}px`,
+          top: `${position.y}px`,
         }}
         onDoubleClick={() => toggleOkeyBack(tile)}
         onPointerDown={(e) => handleTilePointerDown(e, tile)}
@@ -2540,7 +2540,7 @@ function App() {
 
     return (
       <div
-        className={\`table-discard-zone \${className} \${takeable ? "side-takeable" : ""}\`}
+        className={`table-discard-zone ${className} ${takeable ? "side-takeable" : ""}`}
         onClick={takeable ? takeDiscard : undefined}
         title={takeable ? "Yandaki taşı al" : ""}
       >
@@ -2599,15 +2599,15 @@ function App() {
           const group = getSeriesGroup(sectionIndex, rowIndex);
 
           return (
-            <div className="series-row" key={\`\${sectionIndex}-\${rowIndex}\`}>
+            <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
               {Array.from({ length: SERIES_COLS }).map((__, colIndex) => {
                 const slot = colIndex + 1;
                 const entry = getOpenedEntry(group, slot);
 
                 return (
                   <div
-                    className={\`series-cell \${group ? "drop-target" : ""}\`}
-                    key={\`\${sectionIndex}-\${rowIndex}-\${colIndex}\`}
+                    className={`series-cell ${group ? "drop-target" : ""}`}
+                    key={`${sectionIndex}-${rowIndex}-${colIndex}`}
                     data-opened-group-id={group?.id || ""}
                   >
                     {entry && renderOpenedTile(entry, group)}
@@ -2628,15 +2628,15 @@ function App() {
           const group = getPairGroup(sectionIndex, rowIndex);
 
           return (
-            <div className="pair-row" key={\`\${sectionIndex}-\${rowIndex}\`}>
+            <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
               {Array.from({ length: PAIR_COLS }).map((__, colIndex) => {
                 const slot = colIndex + 1;
                 const entry = getOpenedEntry(group, slot);
 
                 return (
                   <div
-                    className={\`pair-cell \${group ? "drop-target" : ""}\`}
-                    key={\`\${sectionIndex}-\${rowIndex}-\${colIndex}\`}
+                    className={`pair-cell ${group ? "drop-target" : ""}`}
+                    key={`${sectionIndex}-${rowIndex}-${colIndex}`}
                     data-opened-group-id={group?.id || ""}
                   >
                     {entry && renderOpenedTile(entry, group)}
@@ -2748,7 +2748,7 @@ function App() {
                 <strong>{roomCode}</strong>
               </div>
 
-              <div className={\`turn-pill \${isMyTurn ? "my-turn" : ""}\`}>
+              <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
                 Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"} /{" "}
                 {turnPhase === "draw" ? "Taş çek / yandan al" : "Taş at"}
               </div>
@@ -2770,9 +2770,9 @@ function App() {
 
                 {topPlayer && (
                   <div
-                    className={\`player-badge top-player ${
+                    className={`player-badge top-player ${
                       currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
-                    }\`}
+                    }`}
                     style={getTurnRingStyle(topPlayer.id)}
                   >
                     <div className="avatar">{topPlayer.name[0]}</div>
@@ -2785,9 +2785,9 @@ function App() {
 
                 {leftPlayer && (
                   <div
-                    className={\`player-badge left-player ${
+                    className={`player-badge left-player ${
                       currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
-                    }\`}
+                    }`}
                     style={getTurnRingStyle(leftPlayer.id)}
                   >
                     <div className="avatar">{leftPlayer.name[0]}</div>
@@ -2800,9 +2800,9 @@ function App() {
 
                 {rightPlayer && (
                   <div
-                    className={\`player-badge right-player ${
+                    className={`player-badge right-player ${
                       currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
-                    }\`}
+                    }`}
                     style={getTurnRingStyle(rightPlayer.id)}
                   >
                     <div className="avatar">{rightPlayer.name[0]}</div>
@@ -2820,9 +2820,9 @@ function App() {
                 })}
 
                 <div
-                  className={\`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
+                  className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
                     isOverMyDiscard ? "discard-zone-hover" : ""
-                  }\`}
+                  }`}
                 >
                   <span>TAŞ AT</span>
                   {discardPiles[myPlayerId] ? (
@@ -2864,7 +2864,7 @@ function App() {
                   <div className="indicator-tile">
                     <span>Gösterge</span>
                     {indicatorTile ? (
-                      <div className={\`tile \${indicatorTile.color} center-static-tile\`}>
+                      <div className={`tile ${indicatorTile.color} center-static-tile`}>
                         <span>{indicatorTile.number}</span>
                         <small>{TILE_HEARTS[indicatorTile.color] || "♥"}</small>
                       </div>
@@ -2874,7 +2874,7 @@ function App() {
                   </div>
 
                   <div
-                    className={\`deck-back-box \${canDraw ? "" : "disabled-deck"}\`}
+                    className={`deck-back-box ${canDraw ? "" : "disabled-deck"}`}
                     onClick={drawTile}
                     title="Taş çek"
                   >
@@ -2884,9 +2884,9 @@ function App() {
                 </div>
 
                 <div
-                  className={\`my-player-card ${
+                  className={`my-player-card ${
                     currentTurnPlayerId === myPlayerId ? "active-turn" : ""
-                  }\`}
+                  }`}
                   style={getTurnRingStyle(myPlayerId)}
                 >
                   <div className="avatar">{me ? me.name[0] : "S"}</div>
@@ -2999,7 +2999,7 @@ function App() {
                       const player = players.find((item) => item.id === penalty.playerId);
 
                       return (
-                        <tr key={\`\${penalty.playerId}-\${index}\`}>
+                        <tr key={`${penalty.playerId}-${index}`}>
                           <td>{player?.name || "Oyuncu"}</td>
                           <td>{penalty.reason}</td>
                           <td>{penalty.amount}</td>
