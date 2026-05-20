@@ -252,27 +252,6 @@ function App() {
     );
   }
 
-  function renderDiscardBox(label, active = false, clickable = false) {
-    return (
-      <div
-        className={`discard-box-small ${active ? "active-discard-box" : ""} ${
-          clickable ? "clickable-discard" : ""
-        }`}
-        onClick={clickable ? discardSelectedTile : undefined}
-      >
-        <span>{label}</span>
-
-        {active && discardedTile ? (
-          <div className={getTileClass(discardedTile)}>
-            {getTileText(discardedTile)}
-          </div>
-        ) : (
-          <div className="empty-discard-slot">+</div>
-        )}
-      </div>
-    );
-  }
-
   const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
     (player) => player.id === currentTurnPlayerId
@@ -407,45 +386,6 @@ function App() {
                 </div>
               )}
 
-              <div className="opponent-discard top-discard">
-                {renderDiscardBox("Atılan", false)}
-              </div>
-
-              <div className="opponent-discard left-discard">
-                {renderDiscardBox("Atılan", false)}
-              </div>
-
-              <div className="opponent-discard right-discard">
-                {renderDiscardBox("Atılan", false)}
-              </div>
-
-              <div className="opened-sets set-left">
-                <div className="mini-row">
-                  <span className="mini-tile red">10</span>
-                  <span className="mini-tile black">11</span>
-                  <span className="mini-tile blue">12</span>
-                </div>
-                <div className="mini-row">
-                  <span className="mini-tile blue">3</span>
-                  <span className="mini-tile blue">4</span>
-                  <span className="mini-tile blue">5</span>
-                  <span className="mini-tile blue">6</span>
-                </div>
-              </div>
-
-              <div className="opened-sets set-right">
-                <div className="mini-row">
-                  <span className="mini-tile red">2</span>
-                  <span className="mini-tile blue">2</span>
-                  <span className="mini-tile black">2</span>
-                </div>
-                <div className="mini-row">
-                  <span className="mini-tile red">12</span>
-                  <span className="mini-tile yellow">12</span>
-                  <span className="mini-tile black">12</span>
-                </div>
-              </div>
-
               <div className="center-tools clean-center">
                 <div className="indicator-tile">
                   <span>Gösterge</span>
@@ -455,6 +395,17 @@ function App() {
                 <div className="deck-back-box">
                   <span>Kalan</span>
                   <div className="deck-back-tile">{deckCount}</div>
+                </div>
+
+                <div className="center-discard-box">
+                  <span>Son Atılan</span>
+                  {discardedTile ? (
+                    <div className={getTileClass(discardedTile)}>
+                      {getTileText(discardedTile)}
+                    </div>
+                  ) : (
+                    <div className="empty-discard-slot">+</div>
+                  )}
                 </div>
               </div>
 
@@ -483,20 +434,20 @@ function App() {
                       items={myHand.map((tile) => tile.id)}
                       strategy={rectSortingStrategy}
                     >
-                      <div className="rack-rows">
-                        <div className="rack-row">
-                          {myHand.slice(0, 11).map((tile) => renderTile(tile))}
-                        </div>
-
-                        <div className="rack-row">
-                          {myHand.slice(11).map((tile) => renderTile(tile))}
-                        </div>
+                      <div className="rack-rows rack-free-grid">
+                        {myHand.map((tile) => renderTile(tile))}
                       </div>
                     </SortableContext>
                   </DndContext>
 
                   <div className="my-discard-zone">
-                    {renderDiscardBox("TAŞ AT", Boolean(discardedTile), true)}
+                    <div
+                      className="discard-box-small clickable-discard"
+                      onClick={discardSelectedTile}
+                    >
+                      <span>TAŞ AT</span>
+                      <div className="empty-discard-slot">+</div>
+                    </div>
                   </div>
                 </div>
 
