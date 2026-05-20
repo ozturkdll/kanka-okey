@@ -2440,7 +2440,7 @@ function App() {
     }
 
     if (!playerOpenTypes[myPlayerId] && totalScore < 101) {
-      alert(\`Seri açmak için en az 101 lazım. Şu an: \${totalScore}\`);
+      alert(\`Seri açmak için en az 101 lazım. Şu an: ${totalScore}`);
       return;
     }
 
