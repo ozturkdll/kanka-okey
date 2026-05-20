@@ -243,7 +243,7 @@ input:focus {
 
 .table-felt {
   position: relative;
-  min-height: 720px;
+  min-height: 660px;
   border-radius: 26px;
   overflow: hidden;
   background:
@@ -388,7 +388,7 @@ input:focus {
 
 .my-player-card {
   left: 50%;
-  bottom: 218px;
+  bottom: 198px;
   transform: translateX(-50%);
   min-width: 126px;
   height: 42px;
@@ -418,13 +418,14 @@ input:focus {
 /* ORTA AÇMA ALANI */
 .open-area {
   position: absolute;
-  left: 96px;
-  right: 96px;
-  top: 62px;
-  bottom: 330px;
+  left: 104px;
+  right: 104px;
+  top: 78px;
+  bottom: 270px;
   z-index: 5;
   display: flex;
   gap: 10px;
+  pointer-events: auto;
 }
 
 .open-area-main,
@@ -434,7 +435,7 @@ input:focus {
   border-radius: 10px;
   overflow: hidden;
   border: 2px solid rgba(214, 228, 240, 0.42);
-  background: rgba(24, 47, 67, 0.72);
+  background: rgba(24, 47, 67, 0.68);
   box-shadow:
     inset 0 0 20px rgba(255, 255, 255, 0.035),
     0 0 12px rgba(0, 0, 0, 0.18);
@@ -462,29 +463,29 @@ input:focus {
 .pair-section {
   display: grid;
   min-height: 0;
-  gap: 5px;
+  gap: 4px;
   grid-template-rows: repeat(12, 1fr);
 }
 
 .series-row {
   display: grid;
   grid-template-columns: repeat(13, 1fr);
-  gap: 4px;
+  gap: 3px;
   min-height: 0;
 }
 
 .pair-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
+  gap: 3px;
   min-height: 0;
 }
 
 .series-cell,
 .pair-cell {
   min-height: 0;
-  border: 1px solid rgba(214, 228, 240, 0.28);
-  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(214, 228, 240, 0.26);
+  background: rgba(255, 255, 255, 0.032);
   border-radius: 5px;
   display: flex;
   align-items: stretch;
@@ -524,7 +525,7 @@ input:focus {
   background: #f8fafc;
   color: #020617;
   border: none;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 900;
   display: flex;
   align-items: center;
@@ -559,11 +560,11 @@ input:focus {
   outline-offset: -2px;
 }
 
-.hand-summary-box {.hand-summary-box {.hand-summary-box {
+.hand-summary-box {.hand-summary-box {.hand-summary-box {.hand-summary-box {
   position: absolute;
   z-index: 42;
   right: 278px;
-  bottom: 218px;
+  bottom: 204px;
   min-width: 205px;
   height: 34px;
   border-radius: 999px;
@@ -592,7 +593,7 @@ input:focus {
   position: absolute;
   z-index: 42;
   right: 80px;
-  bottom: 220px;
+  bottom: 210px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -703,12 +704,12 @@ input:focus {
 
 .bottom-left-discard-zone {
   left: 18px;
-  bottom: 230px;
+  bottom: 210px;
 }
 
 .bottom-right-discard-zone {
   right: 18px;
-  bottom: 230px;
+  bottom: 210px;
 }
 
 .my-table-discard-zone {
@@ -781,7 +782,7 @@ input:focus {
 
 .rack {
   position: absolute;
-  z-index: 50;
+  z-index: 80;
   left: 115px;
   right: 22px;
   bottom: 18px;
@@ -869,7 +870,8 @@ input:focus {
     0 5px 10px rgba(0, 0, 0, 0.22);
 }
 
-.free-rack-board .tile {
+.free-rack-board .tile,
+.free-rack-board > .tile {
   position: absolute;
   margin: 0;
   z-index: 10;
@@ -1082,7 +1084,7 @@ input:focus {
   }
 
   .table-felt {
-    min-height: 760px;
+    min-height: 710px;
     border-radius: 18px;
   }
 
@@ -1112,10 +1114,10 @@ input:focus {
   }
 
   .open-area {
-    left: 78px;
-    right: 78px;
-    top: 58px;
-    bottom: 335px;
+    left: 82px;
+    right: 82px;
+    top: 78px;
+    bottom: 305px;
     gap: 6px;
   }
 
@@ -1172,7 +1174,7 @@ input:focus {
 
   .hand-summary-box {
     right: 150px;
-    bottom: 238px;
+    bottom: 214px;
     min-width: 150px;
     height: 31px;
     gap: 8px;
@@ -1184,7 +1186,7 @@ input:focus {
 
   .center-tools {
     right: 44px;
-    bottom: 242px;
+    bottom: 222px;
     gap: 6px;
   }
 
@@ -1195,7 +1197,7 @@ input:focus {
   }
 
   .my-player-card {
-    bottom: 230px;
+    bottom: 206px;
     padding: 3px 7px;
     min-width: 112px;
     height: 38px;
