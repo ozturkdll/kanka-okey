@@ -15,6 +15,10 @@ const INDICATOR_TILE = {
   number: 2,
 };
 
+const OPEN_ROWS = 12;
+const SERIES_COLS = 13;
+const PAIR_COLS = 2;
+
 const styles = `
 * {
   box-sizing: border-box;
@@ -407,7 +411,7 @@ input:focus {
   bottom: 236px;
   z-index: 5;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   pointer-events: none;
 }
 
@@ -428,39 +432,59 @@ input:focus {
 }
 
 .open-area-main {
-  flex: 7;
-}
-
-.open-area-pairs {
-  flex: 3;
-  min-width: 210px;
-  max-width: 260px;
+  flex: 1;
   padding: 30px 8px 8px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  min-width: 0;
 }
 
+.open-area-pairs {
+  width: 170px;
+  flex: 0 0 170px;
+  padding: 30px 6px 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.series-section,
 .pair-section {
   display: grid;
   grid-template-rows: repeat(12, 1fr);
+  min-height: 0;
+}
+
+.series-section {
   gap: 4px;
+}
+
+.pair-section {
+  gap: 4px;
+}
+
+.series-row {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 3px;
   min-height: 0;
 }
 
 .pair-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
   min-height: 0;
 }
 
+.series-cell,
 .pair-cell {
-  border: 1px dashed rgba(255, 255, 255, 0.22);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.025);
-  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.016);
-  min-height: 13px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.022);
+  box-shadow: inset 0 0 9px rgba(255, 255, 255, 0.012);
+  min-height: 12px;
 }
 
 .open-area-label,
@@ -475,8 +499,10 @@ input:focus {
 }
 
 .open-area-label {
-  left: 10px;
-  top: -21px;
+  left: 50%;
+  top: 7px;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .open-area-right-label {
@@ -899,27 +925,38 @@ input:focus {
     right: 82px;
     top: 78px;
     bottom: 240px;
-    gap: 8px;
-  }
-
-  .open-area-pairs {
-    min-width: 170px;
-    max-width: 190px;
-    padding: 27px 6px 6px;
     gap: 6px;
   }
 
+  .open-area-main {
+    padding: 30px 5px 5px;
+    gap: 6px;
+  }
+
+  .open-area-pairs {
+    width: 126px;
+    flex-basis: 126px;
+    padding: 30px 4px 5px;
+    gap: 4px;
+  }
+
+  .series-section,
   .pair-section {
-    grid-template-rows: repeat(12, 1fr);
     gap: 3px;
+  }
+
+  .series-row {
+    gap: 2px;
   }
 
   .pair-row {
-    gap: 3px;
+    gap: 2px;
   }
 
+  .series-cell,
   .pair-cell {
-    min-height: 10px;
+    min-height: 9px;
+    border-radius: 3px;
   }
 
   .bottom-right-discard-zone {
@@ -2044,13 +2081,28 @@ function App() {
     return 200 + (index + 1) * 17;
   }
 
+  function renderSeriesSection(sectionIndex) {
+    return (
+      <div className="series-section" key={sectionIndex}>
+        {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
+          <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
+            {Array.from({ length: SERIES_COLS }).map((__, colIndex) => (
+              <div className="series-cell" key={`${sectionIndex}-${rowIndex}-${colIndex}`}></div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   function renderPairSection(sectionIndex) {
     return (
       <div className="pair-section" key={sectionIndex}>
-        {Array.from({ length: 12 }).map((_, rowIndex) => (
+        {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
           <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
-            <div className="pair-cell"></div>
-            <div className="pair-cell"></div>
+            {Array.from({ length: PAIR_COLS }).map((__, colIndex) => (
+              <div className="pair-cell" key={`${sectionIndex}-${rowIndex}-${colIndex}`}></div>
+            ))}
           </div>
         ))}
       </div>
@@ -2216,6 +2268,8 @@ function App() {
                 <div className="open-area">
                   <div className="open-area-main">
                     <div className="open-area-label">Seri Açılan Alan</div>
+                    {renderSeriesSection(1)}
+                    {renderSeriesSection(2)}
                   </div>
 
                   <div className="open-area-pairs">
