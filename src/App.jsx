@@ -189,13 +189,21 @@ input:focus {
   margin-bottom: 8px;
 }
 
-.menu-btn {
+.menu-btn,
+.score-btn {
   width: 44px;
   height: 44px;
   border-radius: 12px;
   background: linear-gradient(135deg, #fbbf24, #b45309);
   color: #3b2108;
-  font-size: 24px;
+  font-size: 20px;
+}
+
+.score-btn {
+  width: auto;
+  padding: 0 14px;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
 }
 
 .room-pill,
@@ -328,8 +336,7 @@ input:focus {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at top, #bae6fd, #0284c7);
+  background: radial-gradient(circle at top, #bae6fd, #0284c7);
   border: 3px solid #f8fafc;
   color: #082f49;
   display: flex;
@@ -724,6 +731,13 @@ input:focus {
   background: rgba(34, 197, 94, 0.18);
 }
 
+.side-takeable {
+  border-color: #facc15;
+  background: rgba(250, 204, 21, 0.18);
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.35);
+}
+
 .discard-zone-hover {
   background: rgba(34, 197, 94, 0.75);
   border-color: white;
@@ -770,6 +784,10 @@ input:focus {
 .left-action-stack button.yellow {
   background: linear-gradient(135deg, #facc15, #ca8a04);
   color: #422006;
+}
+
+.left-action-stack button.gray {
+  background: linear-gradient(135deg, #64748b, #334155);
 }
 
 .left-action-stack button:hover {
@@ -929,6 +947,87 @@ input:focus {
   content: "★";
   color: #991b1b;
   font-size: 18px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.score-modal,
+.result-modal {
+  width: min(520px, 100%);
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 30px 90px rgba(0,0,0,.55);
+}
+
+.score-modal h2,
+.result-modal h2 {
+  margin: 0 0 14px;
+}
+
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.score-table th,
+.score-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+
+.score-table th {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.score-table td:last-child,
+.score-table th:last-child {
+  text-align: right;
+  font-weight: 900;
+}
+
+.modal-close {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: white;
+}
+
+.result-message {
+  color: white;
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 14px;
+}
+
+.notice-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 250px;
+  transform: translateX(-50%);
+  z-index: 90;
+  background: rgba(250, 204, 21, 0.94);
+  color: #422006;
+  font-weight: 900;
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.3);
 }
 
 @media (max-width: 900px) {
@@ -1148,6 +1247,15 @@ function App() {
   const [discardPiles, setDiscardPiles] = useState({});
   const [openedSeries, setOpenedSeries] = useState([]);
   const [openedPairs, setOpenedPairs] = useState([]);
+  const [playerOpenTypes, setPlayerOpenTypes] = useState({});
+  const [takenDiscard, setTakenDiscard] = useState(null);
+  const [mustUseTakenTileId, setMustUseTakenTileId] = useState(null);
+
+  const [handFinished, setHandFinished] = useState(false);
+  const [handResult, setHandResult] = useState(null);
+  const [totalScores, setTotalScores] = useState({});
+  const [handNumber, setHandNumber] = useState(1);
+  const [showScoreboard, setShowScoreboard] = useState(false);
 
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
@@ -1255,6 +1363,13 @@ function App() {
     setDiscardPiles(data.discardPiles || {});
     setOpenedSeries(data.openedSeries || []);
     setOpenedPairs(data.openedPairs || []);
+    setPlayerOpenTypes(data.playerOpenTypes || {});
+    setTakenDiscard(data.takenDiscard || null);
+    setMustUseTakenTileId(data.mustUseTakenTileId || null);
+    setHandFinished(Boolean(data.handFinished));
+    setHandResult(data.handResult || null);
+    setTotalScores(data.totalScores || {});
+    setHandNumber(data.handNumber || 1);
     setDraggingTile(null);
     setIsOverMyDiscard(false);
     pendingDiscardRef.current = null;
@@ -1409,6 +1524,24 @@ function App() {
     }
 
     socket.emit("draw-tile", { roomCode });
+  }
+
+  function takeDiscard() {
+    if (currentTurnPlayerId !== myPlayerId) {
+      alert("Sıra sende değil.");
+      return;
+    }
+
+    if (turnPhase !== "draw") {
+      alert("Şu an yandan taş alamazsın.");
+      return;
+    }
+
+    socket.emit("take-discard", { roomCode });
+  }
+
+  function returnDiscard() {
+    socket.emit("return-discard", { roomCode });
   }
 
   function getTileClass(tile) {
@@ -1654,6 +1787,14 @@ function App() {
 
       if (turnPhase !== "discard") {
         alert("Önce taş çekmelisin.");
+        snapTileToRack(tile.id);
+        setDraggingTile(null);
+        setIsOverMyDiscard(false);
+        return;
+      }
+
+      if (mustUseTakenTileId) {
+        alert("Yandan aldığın taşı kullanmadan taş atamazsın. Önce elini açmalı ya da taşı geri bırakmalısın.");
         snapTileToRack(tile.id);
         setDraggingTile(null);
         setIsOverMyDiscard(false);
@@ -2179,7 +2320,7 @@ function App() {
       return;
     }
 
-    if (totalScore < 101) {
+    if (!playerOpenTypes[myPlayerId] && totalScore < 101) {
       alert(`Seri açmak için en az 101 lazım. Şu an: ${totalScore}`);
       return;
     }
@@ -2205,7 +2346,7 @@ function App() {
       return;
     }
 
-    if (validGroups.length < 5) {
+    if (!playerOpenTypes[myPlayerId] && validGroups.length < 5) {
       alert(`Çift açmak için en az 5 çift lazım. Şu an: ${validGroups.length}`);
       return;
     }
@@ -2256,12 +2397,37 @@ function App() {
     return 200 + (index + 1) * 17;
   }
 
-  function renderDiscardZoneForPlayer(playerId, className, label = "Atılan") {
+  function getRelativePlayers() {
+    const myIndex = players.findIndex((player) => player.id === myPlayerId);
+
+    if (myIndex === -1) {
+      return {
+        me: null,
+        rightPlayer: null,
+        topPlayer: null,
+        leftPlayer: null,
+      };
+    }
+
+    return {
+      me: players[myIndex],
+      rightPlayer: players[(myIndex + 1) % players.length],
+      topPlayer: players[(myIndex + 2) % players.length],
+      leftPlayer: players[(myIndex + 3) % players.length],
+    };
+  }
+
+  function renderDiscardZoneForPlayer(playerId, className, label = "Atılan", options = {}) {
     const pileTile = playerId ? discardPiles[playerId] : null;
+    const takeable = options.takeable && pileTile;
 
     return (
-      <div className={`table-discard-zone ${className}`}>
-        <span>{label}</span>
+      <div
+        className={`table-discard-zone ${className} ${takeable ? "side-takeable" : ""}`}
+        onClick={takeable ? takeDiscard : undefined}
+        title={takeable ? "Yandaki taşı al" : ""}
+      >
+        <span>{takeable ? "AL" : label}</span>
         {pileTile ? (
           <div className={getTileClass(pileTile)}>{getTileText(pileTile)}</div>
         ) : (
@@ -2337,17 +2503,21 @@ function App() {
     );
   }
 
-  const opponents = players.filter((player) => player.id !== myPlayerId);
-  const currentTurnPlayer = players.find(
-    (player) => player.id === currentTurnPlayerId
-  );
+  function renderScoreRows(scoreSource = totalScores) {
+    return players.map((player) => (
+      <tr key={player.id}>
+        <td>{player.name}</td>
+        <td>{playerOpenTypes[player.id] === "pairs" ? "Çift" : playerOpenTypes[player.id] === "series" ? "Seri" : "-"}</td>
+        <td>{scoreSource?.[player.id] ?? 0}</td>
+      </tr>
+    ));
+  }
 
-  const topPlayer = opponents[0];
-  const leftPlayer = opponents[1];
-  const rightPlayer = opponents[2];
-  const me = players.find((player) => player.id === myPlayerId);
+  const { me, rightPlayer, topPlayer, leftPlayer } = getRelativePlayers();
+  const currentTurnPlayer = players.find((player) => player.id === currentTurnPlayerId);
   const isMyTurn = currentTurnPlayerId === myPlayerId;
-  const canDraw = isMyTurn && turnPhase === "draw";
+  const canDraw = isMyTurn && turnPhase === "draw" && !takenDiscard;
+  const canTakeLeftDiscard = isMyTurn && turnPhase === "draw" && leftPlayer && discardPiles[leftPlayer.id];
 
   return (
     <>
@@ -2426,14 +2596,24 @@ function App() {
 
               <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
                 Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}{" "}
-                / {turnPhase === "draw" ? "Taş çek" : "Taş at"}
+                / {turnPhase === "draw" ? "Taş çek / yandan al" : "Taş at"}
               </div>
 
-              <div className="mode-pill">Katlamasız</div>
+              <button className="score-btn" onClick={() => setShowScoreboard(true)}>
+                Skor
+              </button>
+
+              <div className="mode-pill">El {handNumber}</div>
             </div>
 
             <div className="okey-table">
               <div className="table-felt">
+                {mustUseTakenTileId && (
+                  <div className="notice-pill">
+                    Yandan aldığın taşı açarken kullan veya geri bırak
+                  </div>
+                )}
+
                 {topPlayer && (
                   <div
                     className={`player-badge top-player ${
@@ -2485,7 +2665,9 @@ function App() {
                   </div>
                 )}
 
-                {renderDiscardZoneForPlayer(leftPlayer?.id, "top-left-discard-zone")}
+                {renderDiscardZoneForPlayer(leftPlayer?.id, "top-left-discard-zone", "Atılan", {
+                  takeable: canTakeLeftDiscard,
+                })}
                 {renderDiscardZoneForPlayer(topPlayer?.id, "top-right-discard-zone")}
                 {renderDiscardZoneForPlayer(rightPlayer?.id, "bottom-left-discard-zone")}
 
@@ -2571,6 +2753,11 @@ function App() {
                   <button className="orange" onClick={handleOpenPairs}>
                     Çift Aç
                   </button>
+                  {mustUseTakenTileId && (
+                    <button className="gray" onClick={returnDiscard}>
+                      Taşı Geri Bırak
+                    </button>
+                  )}
                   <button className="yellow" onClick={() => handleArrange("collect")}>
                     Geri Topla
                   </button>
@@ -2594,6 +2781,55 @@ function App() {
           </div>
         )}
       </div>
+
+      {showScoreboard && (
+        <div className="modal-backdrop">
+          <div className="score-modal">
+            <h2>Skor Tablosu</h2>
+            <table className="score-table">
+              <thead>
+                <tr>
+                  <th>Oyuncu</th>
+                  <th>Açma</th>
+                  <th>Toplam</th>
+                </tr>
+              </thead>
+              <tbody>{renderScoreRows(totalScores)}</tbody>
+            </table>
+            <button className="modal-close" onClick={() => setShowScoreboard(false)}>
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
+
+      {handFinished && handResult && (
+        <div className="modal-backdrop">
+          <div className="result-modal">
+            <h2>El Bitti</h2>
+            <div className="result-message">{handResult.message}</div>
+            <table className="score-table">
+              <thead>
+                <tr>
+                  <th>Oyuncu</th>
+                  <th>Bu El</th>
+                  <th>Toplam</th>
+                </tr>
+              </thead>
+              <tbody>
+                {players.map((player) => (
+                  <tr key={player.id}>
+                    <td>{player.name}</td>
+                    <td>{handResult.handScores?.[player.id] ?? 0}</td>
+                    <td>{handResult.totalScores?.[player.id] ?? totalScores[player.id] ?? 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="status">Yeni el birazdan başlayacak...</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
