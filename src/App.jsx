@@ -318,15 +318,6 @@ input:focus {
   text-overflow: ellipsis;
 }
 
-.player-subtitle {
-  color: #facc15;
-  font-size: 12px;
-  min-height: 14px;
-  display: block;
-  font-weight: 700;
-  margin-top: 2px;
-}
-
 .avatar {
   width: 44px;
   height: 44px;
@@ -359,7 +350,7 @@ input:focus {
   left: 16px;
   top: 146px;
   width: 76px;
-  height: 172px;
+  height: 150px;
   flex-direction: column;
   justify-content: center;
   padding: 8px 5px;
@@ -371,8 +362,7 @@ input:focus {
   gap: 2px;
 }
 
-.left-player strong,
-.left-player .player-subtitle {
+.left-player strong {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   max-height: 90px;
@@ -383,14 +373,13 @@ input:focus {
   right: 16px;
   top: 146px;
   width: 76px;
-  height: 172px;
+  height: 150px;
   flex-direction: column;
   justify-content: center;
   padding: 8px 5px;
 }
 
-.right-player strong,
-.right-player .player-subtitle {
+.right-player strong {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   max-height: 90px;
@@ -401,7 +390,7 @@ input:focus {
   left: 50%;
   bottom: 198px;
   transform: translateX(-50%);
-  min-width: 138px;
+  min-width: 126px;
   height: 42px;
   justify-content: center;
   padding: 4px 8px;
@@ -419,11 +408,6 @@ input:focus {
 .my-player-card strong {
   font-size: 12px;
   max-width: 78px;
-}
-
-.my-player-card .player-subtitle {
-  font-size: 10px;
-  margin-top: 0;
 }
 
 .my-player-card .player-info,
@@ -636,6 +620,10 @@ input:focus {
   gap: 4px;
 }
 
+.indicator-tile {
+  padding-top: 4px;
+}
+
 .deck-back-box {
   cursor: pointer;
   transition: 0.15s;
@@ -656,7 +644,7 @@ input:focus {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-.indicator-tile span,
+.indicator-label,
 .deck-back-box span {
   color: #cbd5e1;
   font-size: 10px;
@@ -912,9 +900,9 @@ input:focus {
 .center-static-tile {
   position: static !important;
   cursor: default !important;
-  width: 48px;
-  height: 62px;
-  font-size: 28px;
+  width: 42px;
+  height: 54px;
+  font-size: 24px;
 }
 
 .tile.red {
@@ -1073,14 +1061,14 @@ input:focus {
     top: 124px;
     left: 8px;
     width: 64px;
-    height: 146px;
+    height: 130px;
   }
 
   .right-player {
     top: 124px;
     right: 8px;
     width: 64px;
-    height: 146px;
+    height: 130px;
   }
 
   .player-badge {
@@ -1186,7 +1174,7 @@ input:focus {
   .my-player-card {
     bottom: 206px;
     padding: 3px 7px;
-    min-width: 120px;
+    min-width: 112px;
     height: 38px;
   }
 
@@ -1223,9 +1211,9 @@ input:focus {
   }
 
   .center-static-tile {
-    width: 40px;
-    height: 54px;
-    font-size: 24px;
+    width: 34px;
+    height: 48px;
+    font-size: 20px;
   }
 
   .empty-discard-slot {
@@ -2442,22 +2430,6 @@ function App() {
     );
   }
 
-  function getPlayerPrestige(player) {
-    if (!player) return 0;
-
-    const value =
-      player.money ??
-      player.coins ??
-      player.balance ??
-      player.prestige ??
-      player.gold;
-
-    if (typeof value === "number") return value;
-
-    const index = players.findIndex((p) => p.id === player.id);
-    return 200 + (index + 1) * 17;
-  }
-
   function getRelativePlayers() {
     const myIndex = players.findIndex((player) => player.id === myPlayerId);
 
@@ -2719,7 +2691,6 @@ function App() {
                     <div className="avatar">{topPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{topPlayer.name}</strong>
-                      <span className="player-subtitle">₺{getPlayerPrestige(topPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -2734,7 +2705,6 @@ function App() {
                     <div className="avatar">{leftPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{leftPlayer.name}</strong>
-                      <span className="player-subtitle">₺{getPlayerPrestige(leftPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -2749,7 +2719,6 @@ function App() {
                     <div className="avatar">{rightPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{rightPlayer.name}</strong>
-                      <span className="player-subtitle">₺{getPlayerPrestige(rightPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -2803,7 +2772,7 @@ function App() {
 
                 <div className="center-tools">
                   <div className="indicator-tile">
-                    <span>Gösterge</span>
+                    <span className="indicator-label">Gösterge</span>
                     {indicatorTile ? (
                       <div className={`tile ${indicatorTile.color} center-static-tile`}>
                         <span>{indicatorTile.number}</span>
@@ -2832,7 +2801,6 @@ function App() {
                   <div className="avatar">{me ? me.name[0] : "S"}</div>
                   <div className="player-info">
                     <strong>{me ? me.name : "Sen"}</strong>
-                    <span className="player-subtitle">₺{getPlayerPrestige(me)}</span>
                   </div>
                 </div>
 
