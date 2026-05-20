@@ -1025,6 +1025,33 @@ input:focus {
   margin-bottom: 14px;
 }
 
+.table-toast-stack {
+  position: absolute;
+  left: 50%;
+  top: 58px;
+  transform: translateX(-50%);
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.table-toast {
+  min-width: 260px;
+  max-width: 560px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(250, 204, 21, 0.75);
+  color: #fef3c7;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
 .notice-pill {
   position: absolute;
   left: 50%;
@@ -1269,6 +1296,7 @@ function App() {
   const [totalScores, setTotalScores] = useState({});
   const [handNumber, setHandNumber] = useState(1);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [tableMessages, setTableMessages] = useState([]);
 
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
@@ -1314,7 +1342,14 @@ function App() {
     });
 
     socket.on("penalty-message", (data) => {
-      alert(data?.message || "Ceza yedin.");
+      const id = Date.now() + Math.random();
+      const message = data?.message || "Ceza yedin.";
+
+      setTableMessages((prev) => [...prev, { id, message }].slice(-3));
+
+      setTimeout(() => {
+        setTableMessages((prev) => prev.filter((item) => item.id !== id));
+      }, 5000);
     });
 
     socket.on("error-message", (message) => {
@@ -1342,6 +1377,7 @@ function App() {
     return () => {
       socket.off("connect");
       socket.off("connect_error");
+      socket.off("table-message");
       socket.off("room-created");
       socket.off("players-updated");
       socket.off("game-started");
@@ -2685,6 +2721,15 @@ function App() {
 
             <div className="okey-table">
               <div className="table-felt">
+                {tableMessages.length > 0 && (
+                  <div className="table-toast-stack">
+                    {tableMessages.map((item) => (
+                      <div className="table-toast" key={item.id}>
+                        {item.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {mustUseTakenTileId && (
                   <div className="notice-pill">
                     Yandan aldığın taşı açarken kullan veya geri bırak

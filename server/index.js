@@ -629,7 +629,9 @@ function discardTileForPlayer(room, playerId, tileId) {
   }
 
   if (tileIndex === -1) {
-    const lastDrawnTileId = room.game.lastDrawnTileByPlayerId[playerId];
+    const lastDrawnTileId = room.game.lastDrawnTileByPlayerId
+      ? room.game.lastDrawnTileByPlayerId[playerId]
+      : null;
 
     if (lastDrawnTileId) {
       tileIndex = hand.findIndex((tile) => Number(tile.id) === Number(lastDrawnTileId));
@@ -644,22 +646,27 @@ function discardTileForPlayer(room, playerId, tileId) {
 
   const tile = hand[tileIndex];
 
-  if (room.game.playerOpenTypes[playerId] && isTileUsefulForAnyOpenGroup(room, tile)) {
-    room.totalScores[playerId] = (room.totalScores[playerId] || 0) + 101;
-    room.game.penaltyMessages.push({
-      playerId,
-      amount: 101,
-      reason: "İşlek taş attı.",
-      tile,
-      createdAt: Date.now(),
-    });
+  const playerOpened = Boolean(
+    room.game.playerOpenTypes &&
+    room.game.playerOpenTypes[playerId]
+  );
+
+  if (playerOpened && __isUsefulDiscardTile(room, tile)) {
+    __addIslekPenalty(room, playerId, tile);
   }
 
-  const [discardedTile] = hand.splice(tileIndex, 1);
+  const discardedTile = hand.splice(tileIndex, 1)[0];
 
+  if (!room.game.discardPiles) room.game.discardPiles = {};
   room.game.discardPiles[playerId] = discardedTile;
-  room.game.lastDrawnTileByPlayerId[playerId] = null;
-  room.game.drawSourceByPlayerId[playerId] = null;
+
+  if (room.game.lastDrawnTileByPlayerId) {
+    room.game.lastDrawnTileByPlayerId[playerId] = null;
+  }
+
+  if (room.game.drawSourceByPlayerId) {
+    room.game.drawSourceByPlayerId[playerId] = null;
+  }
 
   return discardedTile;
 }
