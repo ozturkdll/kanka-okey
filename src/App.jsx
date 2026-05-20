@@ -7,6 +7,8 @@ const socket = io("https://kanka-okey-server.onrender.com", {
 });
 
 const TILE_WIDTH = 42;
+const TILE_HEIGHT = 54;
+const SLOT_WIDTH = 52;
 const ROW_1_Y = 10;
 const ROW_2_Y = 72;
 
@@ -30,6 +32,7 @@ function App() {
   const [isOverMyDiscard, setIsOverMyDiscard] = useState(false);
 
   const rackBoardRef = useRef(null);
+  const pendingDiscardRef = useRef(null);
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -65,6 +68,7 @@ function App() {
       setTilePositions(createInitialTilePositions(data.myHand));
       setDraggingTile(null);
       setIsOverMyDiscard(false);
+      pendingDiscardRef.current = null;
     });
 
     socket.on("game-updated", (data) => {
@@ -75,13 +79,32 @@ function App() {
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
-      setTilePositions(createInitialTilePositions(data.myHand));
+      setTilePositions((prev) => reconcileTilePositions(data.myHand, prev));
       setDraggingTile(null);
       setIsOverMyDiscard(false);
+      pendingDiscardRef.current = null;
     });
 
     socket.on("error-message", (message) => {
       alert(message);
+
+      const pending = pendingDiscardRef.current;
+
+      if (pending) {
+        setMyHand((prev) => {
+          const exists = prev.some((tile) => tile.id === pending.tile.id);
+          if (exists) return prev;
+          return [...prev, pending.tile];
+        });
+
+        setTilePositions((prev) => ({
+          ...prev,
+          [pending.tile.id]: pending.position,
+        }));
+
+        setDiscardedTile(pending.previousDiscardedTile);
+        pendingDiscardRef.current = null;
+      }
     });
 
     return () => {
@@ -103,12 +126,56 @@ function App() {
       const col = row === 0 ? index : index - 11;
 
       positions[tile.id] = {
-        x: 12 + col * 52,
+        x: 12 + col * SLOT_WIDTH,
         y: row === 0 ? ROW_1_Y : ROW_2_Y,
       };
     });
 
     return positions;
+  }
+
+  function reconcileTilePositions(hand, oldPositions) {
+    const next = {};
+    const usedSlots = {
+      0: new Set(),
+      1: new Set(),
+    };
+
+    hand.forEach((tile, index) => {
+      const old = oldPositions[tile.id];
+
+      if (old) {
+        const row = closestRackRow(old.y);
+        let slot = positionToSlot(old.x);
+
+        while (usedSlots[row].has(slot)) {
+          slot++;
+        }
+
+        usedSlots[row].add(slot);
+
+        next[tile.id] = {
+          x: slotToPosition(slot),
+          y: row === 0 ? ROW_1_Y : ROW_2_Y,
+        };
+      } else {
+        const row = index < 11 ? 0 : 1;
+        let slot = row === 0 ? index : index - 11;
+
+        while (usedSlots[row].has(slot)) {
+          slot++;
+        }
+
+        usedSlots[row].add(slot);
+
+        next[tile.id] = {
+          x: slotToPosition(slot),
+          y: row === 0 ? ROW_1_Y : ROW_2_Y,
+        };
+      }
+    });
+
+    return next;
   }
 
   function createRoom() {
@@ -166,25 +233,140 @@ function App() {
     return Math.min(Math.max(value, min), max);
   }
 
+  function closestRackRow(y) {
+    return Math.abs(y - ROW_1_Y) < Math.abs(y - ROW_2_Y) ? 0 : 1;
+  }
+
+  function positionToSlot(x) {
+    return Math.max(0, Math.round((x - 12) / SLOT_WIDTH));
+  }
+
+  function slotToPosition(slot) {
+    return 12 + slot * SLOT_WIDTH;
+  }
+
+  function getMaxSlot() {
+    const boardWidth = getRackWidth();
+    return Math.max(0, Math.floor((boardWidth - TILE_WIDTH - 12) / SLOT_WIDTH));
+  }
+
   function snapTileToRack(tileId) {
     const boardWidth = getRackWidth();
 
     setTilePositions((prev) => {
       const current = prev[tileId] || { x: 12, y: ROW_1_Y };
 
-      const snappedY =
-        Math.abs(current.y - ROW_1_Y) < Math.abs(current.y - ROW_2_Y)
-          ? ROW_1_Y
-          : ROW_2_Y;
+      const targetRow = closestRackRow(current.y);
+      const maxSlot = getMaxSlot();
+      const targetSlot = clamp(positionToSlot(current.x), 0, maxSlot);
 
-      return {
-        ...prev,
-        [tileId]: {
-          x: clamp(current.x, 8, boardWidth - TILE_WIDTH - 8),
-          y: snappedY,
-        },
-      };
+      return resolveRackCollision(prev, tileId, targetRow, targetSlot);
     });
+  }
+
+  function resolveRackCollision(prevPositions, movingTileId, targetRow, targetSlot) {
+    const maxSlot = getMaxSlot();
+
+    const result = { ...prevPositions };
+    const occupied = {
+      0: {},
+      1: {},
+    };
+
+    Object.entries(prevPositions).forEach(([id, pos]) => {
+      const numericId = Number(id);
+      if (numericId === movingTileId) return;
+
+      const row = closestRackRow(pos.y);
+      const slot = clamp(positionToSlot(pos.x), 0, maxSlot);
+
+      occupied[row][slot] = numericId;
+    });
+
+    function pushRight(row, slot) {
+      if (slot > maxSlot) return false;
+
+      const occupyingTileId = occupied[row][slot];
+
+      if (!occupyingTileId) {
+        return true;
+      }
+
+      const canPush = pushRight(row, slot + 1);
+
+      if (!canPush) {
+        return false;
+      }
+
+      occupied[row][slot + 1] = occupyingTileId;
+      delete occupied[row][slot];
+
+      result[occupyingTileId] = {
+        x: slotToPosition(slot + 1),
+        y: row === 0 ? ROW_1_Y : ROW_2_Y,
+      };
+
+      return true;
+    }
+
+    function pushLeft(row, slot) {
+      if (slot < 0) return false;
+
+      const occupyingTileId = occupied[row][slot];
+
+      if (!occupyingTileId) {
+        return true;
+      }
+
+      const canPush = pushLeft(row, slot - 1);
+
+      if (!canPush) {
+        return false;
+      }
+
+      occupied[row][slot - 1] = occupyingTileId;
+      delete occupied[row][slot];
+
+      result[occupyingTileId] = {
+        x: slotToPosition(slot - 1),
+        y: row === 0 ? ROW_1_Y : ROW_2_Y,
+      };
+
+      return true;
+    }
+
+    let finalSlot = targetSlot;
+
+    if (occupied[targetRow][targetSlot]) {
+      const pushedRight = pushRight(targetRow, targetSlot);
+
+      if (!pushedRight) {
+        const pushedLeft = pushLeft(targetRow, targetSlot);
+
+        if (!pushedLeft) {
+          finalSlot = findNearestEmptySlot(occupied[targetRow], targetSlot, maxSlot);
+        }
+      }
+    }
+
+    result[movingTileId] = {
+      x: slotToPosition(finalSlot),
+      y: targetRow === 0 ? ROW_1_Y : ROW_2_Y,
+    };
+
+    return result;
+  }
+
+  function findNearestEmptySlot(rowOccupied, targetSlot, maxSlot) {
+    for (let distance = 0; distance <= maxSlot; distance++) {
+      const left = targetSlot - distance;
+      const right = targetSlot + distance;
+
+      if (left >= 0 && !rowOccupied[left]) return left;
+      if (right <= maxSlot && !rowOccupied[right]) return right;
+    }
+
+    return clamp(targetSlot, 0, maxSlot);
   }
 
   function isPointerOverMyDiscardZone(e, draggedElement) {
@@ -244,15 +426,28 @@ function App() {
         return;
       }
 
+      const previousPosition = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
+      const previousDiscardedTile = discardedTile;
+
+      pendingDiscardRef.current = {
+        tile,
+        position: previousPosition,
+        previousDiscardedTile,
+      };
+
+      setDiscardedTile(tile);
+      setMyHand((prev) => prev.filter((handTile) => handTile.id !== tile.id));
+      setTilePositions((prev) => {
+        const next = { ...prev };
+        delete next[tile.id];
+        return next;
+      });
+
       socket.emit("discard-tile", {
         roomCode,
         tileId: tile.id,
       });
 
-      // Taş kutuda rastgele kalmasın.
-      // Server kabul ederse zaten elden silinir.
-      // Reddedilirse ıstakaya geri dönmüş olur.
-      snapTileToRack(tile.id);
       setDraggingTile(null);
       setIsOverMyDiscard(false);
       return;
