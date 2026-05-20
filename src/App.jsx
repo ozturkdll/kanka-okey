@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
@@ -447,69 +447,57 @@ input:focus {
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     rgba(255, 255, 255, 0.025);
   background-size: 20px 20px;
-  position: relative;
 }
 
-.open-area-label {
+.open-area-label,
+.open-area-right-label {
   position: absolute;
-  left: 10px;
-  top: -21px;
   color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
   font-weight: 900;
   background: rgba(2, 6, 23, 0.42);
   border-radius: 999px;
   padding: 3px 8px;
+}
+
+.open-area-label {
+  left: 10px;
+  top: -21px;
 }
 
 .open-area-right-label {
   left: 8px;
   top: 8px;
-  position: absolute;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
-  font-weight: 900;
-  background: rgba(2, 6, 23, 0.42);
-  border-radius: 999px;
-  padding: 3px 8px;
   z-index: 2;
 }
 
 .hand-summary-box {
   position: absolute;
   z-index: 42;
-  right: 270px;
-  bottom: 220px;
-  width: 104px;
-  border-radius: 12px;
-  background: rgba(2, 6, 23, 0.74);
+  right: 260px;
+  bottom: 225px;
+  width: 170px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  padding: 8px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 12px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
-.hand-summary-title {
-  font-size: 10px;
-  color: #cbd5e1;
-  margin-bottom: 5px;
-  font-weight: 800;
-}
-
-.hand-summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.hand-summary-item {
   font-size: 12px;
-  padding: 2px 0;
-}
-
-.hand-summary-row span:first-child {
   color: #e2e8f0;
+  white-space: nowrap;
 }
 
-.hand-summary-row span:last-child {
+.hand-summary-item strong {
   color: #facc15;
-  font-weight: 900;
+  margin-left: 4px;
 }
 
 .center-tools {
@@ -560,9 +548,6 @@ input:focus {
   align-items: center;
   justify-content: center;
   font-weight: 900;
-  box-shadow:
-    inset 0 -4px 0 rgba(0, 0, 0, 0.13),
-    0 5px 10px rgba(0, 0, 0, 0.22);
 }
 
 .table-discard-zone {
@@ -912,13 +897,14 @@ input:focus {
   }
 
   .hand-summary-box {
-    right: 206px;
-    bottom: 214px;
-    width: 88px;
-    padding: 6px 7px;
+    right: 200px;
+    bottom: 218px;
+    width: 145px;
+    height: 32px;
+    gap: 10px;
   }
 
-  .hand-summary-row {
+  .hand-summary-item {
     font-size: 11px;
   }
 
@@ -1004,6 +990,10 @@ function App() {
   const [isOverMyDiscard, setIsOverMyDiscard] = useState(false);
   const [flippedOkeyIds, setFlippedOkeyIds] = useState(() => new Set());
   const [heldOkeyTileId, setHeldOkeyTileId] = useState(null);
+  const [handSummary, setHandSummary] = useState({
+    seriPuan: 0,
+    ciftSayisi: 0,
+  });
 
   const rackBoardRef = useRef(null);
   const pendingDiscardRef = useRef(null);
@@ -1042,6 +1032,7 @@ function App() {
       setDiscardedTile(data.discardedTile);
       setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
       setTilePositions(createInitialTilePositions(data.myHand));
+      setHandSummary({ seriPuan: 0, ciftSayisi: 0 });
       setDraggingTile(null);
       setIsOverMyDiscard(false);
       pendingDiscardRef.current = null;
@@ -1107,15 +1098,28 @@ function App() {
     return INDICATOR_TILE.number === 13 ? 1 : INDICATOR_TILE.number + 1;
   }
 
-  function isOkeyTile(tile) {
-    if (!tile) return false;
-    if (tile.fake) return true;
-
+  function isRealOkeyTile(tile) {
+    if (!tile || tile.fake) return false;
     return tile.color === INDICATOR_TILE.color && tile.number === getOkeyNumber();
   }
 
+  function getEffectiveTile(tile) {
+    if (!tile) return null;
+
+    if (tile.fake) {
+      return {
+        ...tile,
+        color: INDICATOR_TILE.color,
+        number: getOkeyNumber(),
+        fakeAsReal: true,
+      };
+    }
+
+    return tile;
+  }
+
   function shouldShowTileBack(tile) {
-    if (!isOkeyTile(tile)) return false;
+    if (!isRealOkeyTile(tile)) return false;
     return flippedOkeyIds.has(tile.id) || heldOkeyTileId === tile.id;
   }
 
@@ -1381,7 +1385,7 @@ function App() {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
 
-    if (isOkeyTile(tile)) {
+    if (isRealOkeyTile(tile)) {
       holdTimerRef.current = setTimeout(() => {
         setHeldOkeyTileId(tile.id);
       }, 350);
@@ -1428,7 +1432,7 @@ function App() {
   }
 
   function toggleOkeyBack(tile) {
-    if (!isOkeyTile(tile)) return;
+    if (!isRealOkeyTile(tile)) return;
 
     setFlippedOkeyIds((prev) => {
       const next = new Set(prev);
@@ -1562,18 +1566,18 @@ function App() {
       });
     }
 
-    function takeJokers(count) {
-      const jokers = unused.filter((tile) => isOkeyTile(tile)).slice(0, count);
+    function takeRealOkeys(count) {
+      const jokers = unused.filter((tile) => isRealOkeyTile(tile)).slice(0, count);
       return jokers.length === count ? jokers : null;
     }
 
-    function findRunsWithJokers() {
+    function findRunsWithRealOkey() {
       const colors = ["yellow", "blue", "black", "red"];
       const candidates = [];
 
       colors.forEach((color) => {
         for (let start = 1; start <= 11; start++) {
-          for (let length = 3; length <= 5; length++) {
+          for (let length = 5; length >= 3; length--) {
             const neededNumbers = Array.from({ length }, (_, index) => start + index);
             if (neededNumbers.some((number) => number > 13)) continue;
 
@@ -1581,13 +1585,17 @@ function App() {
             let missingCount = 0;
 
             neededNumbers.forEach((number) => {
-              const realTile = unused.find(
-                (tile) =>
-                  !isOkeyTile(tile) &&
-                  tile.color === color &&
-                  tile.number === number &&
+              const realTile = unused.find((tile) => {
+                if (isRealOkeyTile(tile)) return false;
+
+                const effectiveTile = getEffectiveTile(tile);
+
+                return (
+                  effectiveTile.color === color &&
+                  effectiveTile.number === number &&
                   !realTiles.some((used) => used.id === tile.id)
-              );
+                );
+              });
 
               if (realTile) {
                 realTiles.push(realTile);
@@ -1596,7 +1604,7 @@ function App() {
               }
             });
 
-            const jokers = takeJokers(missingCount);
+            const jokers = takeRealOkeys(missingCount);
 
             if (realTiles.length + missingCount >= 3 && jokers) {
               candidates.push({
@@ -1624,7 +1632,7 @@ function App() {
         });
     }
 
-    function findSameNumberSetsWithJokers() {
+    function findSameNumberSetsWithRealOkey() {
       const candidates = [];
 
       for (let number = 1; number <= 13; number++) {
@@ -1632,11 +1640,14 @@ function App() {
         const usedColors = new Set();
 
         unused.forEach((tile) => {
-          if (isOkeyTile(tile)) return;
-          if (tile.number !== number) return;
-          if (usedColors.has(tile.color)) return;
+          if (isRealOkeyTile(tile)) return;
 
-          usedColors.add(tile.color);
+          const effectiveTile = getEffectiveTile(tile);
+
+          if (effectiveTile.number !== number) return;
+          if (usedColors.has(effectiveTile.color)) return;
+
+          usedColors.add(effectiveTile.color);
           realTiles.push(tile);
         });
 
@@ -1644,7 +1655,7 @@ function App() {
           const missingCount = targetLength - realTiles.length;
           if (missingCount < 0) continue;
 
-          const jokers = takeJokers(missingCount);
+          const jokers = takeRealOkeys(missingCount);
 
           if (realTiles.length + missingCount >= 3 && jokers) {
             candidates.push({
@@ -1671,34 +1682,40 @@ function App() {
         });
     }
 
-    function findPairsWithJokers() {
+    function findPairsWithRealOkey() {
       const candidates = [];
-      const realTiles = unused.filter((tile) => !isOkeyTile(tile));
+      const realTiles = unused.filter((tile) => !isRealOkeyTile(tile));
 
       realTiles.forEach((tile) => {
-        const pairTile = unused.find(
-          (other) =>
-            other.id !== tile.id &&
-            !isOkeyTile(other) &&
-            other.color === tile.color &&
-            other.number === tile.number
-        );
+        const effectiveTile = getEffectiveTile(tile);
+
+        const pairTile = unused.find((other) => {
+          if (other.id === tile.id) return false;
+          if (isRealOkeyTile(other)) return false;
+
+          const otherEffective = getEffectiveTile(other);
+
+          return (
+            otherEffective.color === effectiveTile.color &&
+            otherEffective.number === effectiveTile.number
+          );
+        });
 
         if (pairTile) {
           candidates.push({
             type: "pair",
             tiles: [tile, pairTile],
-            score: tile.number * 2,
+            score: effectiveTile.number * 2,
             quality: 10,
           });
         } else {
-          const joker = takeJokers(1)?.[0];
+          const joker = takeRealOkeys(1)?.[0];
 
           if (joker) {
             candidates.push({
               type: "pair",
               tiles: [tile, joker],
-              score: tile.number * 2,
+              score: effectiveTile.number * 2,
               quality: 7,
             });
           }
@@ -1720,19 +1737,22 @@ function App() {
     }
 
     if (mode === "pair" || mode === "doubleTiles") {
-      findPairsWithJokers();
-      findSameNumberSetsWithJokers();
-      findRunsWithJokers();
+      findPairsWithRealOkey();
+      findSameNumberSetsWithRealOkey();
+      findRunsWithRealOkey();
     } else {
-      findRunsWithJokers();
-      findSameNumberSetsWithJokers();
-      findPairsWithJokers();
+      findRunsWithRealOkey();
+      findSameNumberSetsWithRealOkey();
+      findPairsWithRealOkey();
     }
 
     const rest = unused.sort((a, b) => {
+      const effectiveA = getEffectiveTile(a);
+      const effectiveB = getEffectiveTile(b);
+
       return (
-        a.number - b.number ||
-        (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99)
+        effectiveA.number - effectiveB.number ||
+        (colorOrder[effectiveA.color] ?? 99) - (colorOrder[effectiveB.color] ?? 99)
       );
     });
 
@@ -1746,6 +1766,27 @@ function App() {
     }
 
     return groups;
+  }
+
+  function calculateSeriPuan() {
+    const groups = buildOkeyGroups("run");
+
+    return groups
+      .filter((group) => group.type === "run" || group.type === "set")
+      .reduce((sum, group) => sum + group.score, 0);
+  }
+
+  function calculateCiftSayisi() {
+    const groups = buildOkeyGroups("pair");
+
+    return groups.filter((group) => group.type === "pair").length;
+  }
+
+  function updateHandSummary() {
+    setHandSummary({
+      seriPuan: calculateSeriPuan(),
+      ciftSayisi: calculateCiftSayisi(),
+    });
   }
 
   function handleArrange(mode) {
@@ -1765,6 +1806,7 @@ function App() {
 
     const groups = buildOkeyGroups(mode);
     applyLayoutWithGroups(groups);
+    updateHandSummary();
   }
 
   function renderFreeTile(tile) {
@@ -1824,23 +1866,6 @@ function App() {
     const index = players.findIndex((p) => p.id === player.id);
     return 200 + (index + 1) * 17;
   }
-
-  const handSummary = useMemo(() => {
-    const groups = buildOkeyGroups("run");
-
-    const seriPuan = groups
-      .filter((group) => group.type === "run" || group.type === "set")
-      .reduce((sum, group) => sum + group.score, 0);
-
-    const ciftSayisi = buildOkeyGroups("pair").filter(
-      (group) => group.type === "pair"
-    ).length;
-
-    return {
-      seriPuan,
-      ciftSayisi,
-    };
-  }, [myHand]);
 
   const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
@@ -2011,14 +2036,11 @@ function App() {
                 </div>
 
                 <div className="hand-summary-box">
-                  <div className="hand-summary-title">El Özeti</div>
-                  <div className="hand-summary-row">
-                    <span>Seri Puan</span>
-                    <span>{handSummary.seriPuan}</span>
+                  <div className="hand-summary-item">
+                    Seri <strong>{handSummary.seriPuan}</strong>
                   </div>
-                  <div className="hand-summary-row">
-                    <span>Çift</span>
-                    <span>{handSummary.ciftSayisi}</span>
+                  <div className="hand-summary-item">
+                    Çift <strong>{handSummary.ciftSayisi}</strong>
                   </div>
                 </div>
 
@@ -2052,7 +2074,6 @@ function App() {
                   <button onClick={() => handleArrange("run")}>Sıralı Diz</button>
                   <button onClick={() => handleArrange("pair")}>Çift Diz</button>
                   <button onClick={() => handleArrange("doubleTiles")}>Çift Taş</button>
-                  <button onClick={() => handleArrange("processRuns")}>Sıralı Taşları İşle</button>
                   <button onClick={() => handleArrange("collect")}>Geri Topla</button>
                 </div>
 
