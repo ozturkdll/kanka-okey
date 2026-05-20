@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 import "./App.css";
+
+const socket = io("http://localhost:3001");
 
 function App() {
   const [name, setName] = useState("");
@@ -8,17 +11,39 @@ function App() {
   const [players, setPlayers] = useState([]);
   const [inRoom, setInRoom] = useState(false);
 
+  useEffect(() => {
+    socket.on("room-created", (data) => {
+      setRoomCode(data.roomCode);
+      setPlayers(data.players);
+      setInRoom(true);
+    });
+
+    socket.on("players-updated", (data) => {
+      setRoomCode(data.roomCode);
+      setPlayers(data.players);
+      setInRoom(true);
+    });
+
+    socket.on("error-message", (message) => {
+      alert(message);
+    });
+
+    return () => {
+      socket.off("room-created");
+      socket.off("players-updated");
+      socket.off("error-message");
+    };
+  }, []);
+
   function createRoom() {
     if (!name.trim()) {
       alert("Önce ismini yaz.");
       return;
     }
 
-    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-
-    setRoomCode(code);
-    setPlayers([name]);
-    setInRoom(true);
+    socket.emit("create-room", {
+      name,
+    });
   }
 
   function joinRoom() {
@@ -32,9 +57,10 @@ function App() {
       return;
     }
 
-    setRoomCode(joinCode.toUpperCase());
-    setPlayers([name]);
-    setInRoom(true);
+    socket.emit("join-room", {
+      name,
+      roomCode: joinCode,
+    });
   }
 
   function copyRoomCode() {
@@ -82,15 +108,17 @@ function App() {
 
           <ul className="player-list">
             {players.map((player, index) => (
-              <li key={index}>
-                {index + 1}. {player}
+              <li key={player.id}>
+                {index + 1}. {player.name}
               </li>
             ))}
           </ul>
 
-          <p className="small">4 kişi girince oyun başlayacak.</p>
+          <p className="small">{players.length}/4 kişi odada.</p>
 
-          <button className="start">Oyunu Başlat</button>
+          {players.length === 4 && (
+            <button className="start">Oyunu Başlat</button>
+          )}
         </div>
       )}
     </div>
