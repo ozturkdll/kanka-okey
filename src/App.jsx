@@ -74,8 +74,8 @@ function App() {
     <div className="page">
       {!inRoom ? (
         <div className="card">
-          <h1>Kanka Okey</h1>
-          <p>Arkadaşlarınla çipsiz 101 Okey oyna.</p>
+          <h1>Oda Okey</h1>
+<p>Oda kur, link at, çipsiz oyna.</p>
 
           <input
             placeholder="İsmini yaz"
@@ -83,7 +83,7 @@ function App() {
             onChange={(e) => setName(e.target.value)}
           />
 
-          <button onClick={createRoom}>Oda Oluştur</button>
+          <button onClick={createRoom}>Hemen Masa Kur</button>
 
           <div className="divider">veya</div>
 
