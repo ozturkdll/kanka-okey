@@ -477,10 +477,7 @@ input:focus {
   min-height: 0;
 }
 
-.series-section {
-  gap: 4px;
-}
-
+.series-section,
 .pair-section {
   gap: 4px;
 }
@@ -490,7 +487,6 @@ input:focus {
   grid-template-columns: repeat(13, 1fr);
   gap: 3px;
   min-height: 0;
-  position: relative;
 }
 
 .pair-row {
@@ -498,7 +494,6 @@ input:focus {
   grid-template-columns: repeat(2, 1fr);
   gap: 3px;
   min-height: 0;
-  position: relative;
 }
 
 .series-cell,
@@ -508,6 +503,9 @@ input:focus {
   background: rgba(255, 255, 255, 0.022);
   box-shadow: inset 0 0 9px rgba(255, 255, 255, 0.012);
   min-height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .open-area-label,
@@ -572,14 +570,6 @@ input:focus {
   border-color: #a855f7;
 }
 
-.opened-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-height: 23px;
-  overflow: hidden;
-}
-
 .hand-summary-box {
   position: absolute;
   z-index: 42;
@@ -631,6 +621,26 @@ input:focus {
   align-items: center;
   justify-content: center;
   gap: 4px;
+}
+
+.deck-back-box {
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.deck-back-box:hover {
+  transform: translateY(-2px);
+  border-color: rgba(34, 197, 94, 0.8);
+}
+
+.deck-back-box.disabled-deck {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.deck-back-box.disabled-deck:hover {
+  transform: none;
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .indicator-tile span,
@@ -918,33 +928,6 @@ input:focus {
   content: "★";
   color: #991b1b;
   font-size: 18px;
-}
-
-.bottom-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.bottom-actions button {
-  flex: 1;
-  padding: 14px;
-  border-radius: 14px;
-  color: white;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-}
-
-.bottom-actions button.secondary {
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-}
-
-.bottom-actions button.start {
-  background: linear-gradient(135deg, #f97316, #ea580c);
-}
-
-.bottom-actions button.disabled-action {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {
@@ -2155,18 +2138,28 @@ function App() {
       return;
     }
 
-    const validGroups = getManualGroupsFromRack()
-      .filter((group) => evaluateGroup(group).type === "series")
-      .map((group) => group.map((tile) => tile.id));
+    const validGroups = getManualGroupsFromRack().filter(
+      (group) => evaluateGroup(group).type === "series"
+    );
+
+    const totalScore = validGroups.reduce(
+      (sum, group) => sum + evaluateGroup(group).score,
+      0
+    );
 
     if (!validGroups.length) {
       alert("Açılacak geçerli seri yok. Önce ıstakada perleri yan yana diz.");
       return;
     }
 
+    if (totalScore < 101) {
+      alert(`Seri açmak için en az 101 lazım. Şu an: ${totalScore}`);
+      return;
+    }
+
     socket.emit("open-series", {
       roomCode,
-      groups: validGroups,
+      groups: validGroups.map((group) => group.map((tile) => tile.id)),
     });
   }
 
@@ -2176,18 +2169,23 @@ function App() {
       return;
     }
 
-    const validGroups = getManualGroupsFromRack()
-      .filter((group) => evaluateGroup(group).type === "pair")
-      .map((group) => group.map((tile) => tile.id));
+    const validGroups = getManualGroupsFromRack().filter(
+      (group) => evaluateGroup(group).type === "pair"
+    );
 
     if (!validGroups.length) {
       alert("Açılacak geçerli çift yok. Önce çiftleri yan yana diz.");
       return;
     }
 
+    if (validGroups.length < 5) {
+      alert(`Çift açmak için en az 5 çift lazım. Şu an: ${validGroups.length}`);
+      return;
+    }
+
     socket.emit("open-pairs", {
       roomCode,
-      groups: validGroups,
+      groups: validGroups.map((group) => group.map((tile) => tile.id)),
     });
   }
 
@@ -2257,30 +2255,35 @@ function App() {
     );
   }
 
-  function renderOpenedGroup(group) {
-    return (
-      <div className="opened-group" key={group.id}>
-        {(group.tiles || []).map((tile) => renderOpenedTile(tile))}
-      </div>
-    );
+  function getOpenedSeriesTile(sectionIndex, rowIndex, colIndex) {
+    const groupIndex = sectionIndex === 1 ? rowIndex : OPEN_ROWS + rowIndex;
+    const group = openedSeries[groupIndex];
+    return group?.tiles?.[colIndex] || null;
+  }
+
+  function getOpenedPairTile(sectionIndex, rowIndex, colIndex) {
+    const groupIndex = sectionIndex === 1 ? rowIndex : OPEN_ROWS + rowIndex;
+    const group = openedPairs[groupIndex];
+    return group?.tiles?.[colIndex] || null;
   }
 
   function renderSeriesSection(sectionIndex) {
-    const start = sectionIndex === 1 ? 0 : OPEN_ROWS;
-    const sectionGroups = openedSeries.slice(start, start + OPEN_ROWS);
-
     return (
       <div className="series-section" key={sectionIndex}>
         {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
           <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
-            {Array.from({ length: SERIES_COLS }).map((__, colIndex) => (
-              <div
-                className="series-cell"
-                key={`${sectionIndex}-${rowIndex}-${colIndex}`}
-              ></div>
-            ))}
+            {Array.from({ length: SERIES_COLS }).map((__, colIndex) => {
+              const tile = getOpenedSeriesTile(sectionIndex, rowIndex, colIndex);
 
-            {sectionGroups[rowIndex] && renderOpenedGroup(sectionGroups[rowIndex])}
+              return (
+                <div
+                  className="series-cell"
+                  key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+                >
+                  {tile && renderOpenedTile(tile)}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -2288,21 +2291,22 @@ function App() {
   }
 
   function renderPairSection(sectionIndex) {
-    const start = sectionIndex === 1 ? 0 : OPEN_ROWS;
-    const sectionGroups = openedPairs.slice(start, start + OPEN_ROWS);
-
     return (
       <div className="pair-section" key={sectionIndex}>
         {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
           <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
-            {Array.from({ length: PAIR_COLS }).map((__, colIndex) => (
-              <div
-                className="pair-cell"
-                key={`${sectionIndex}-${rowIndex}-${colIndex}`}
-              ></div>
-            ))}
+            {Array.from({ length: PAIR_COLS }).map((__, colIndex) => {
+              const tile = getOpenedPairTile(sectionIndex, rowIndex, colIndex);
 
-            {sectionGroups[rowIndex] && renderOpenedGroup(sectionGroups[rowIndex])}
+              return (
+                <div
+                  className="pair-cell"
+                  key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+                >
+                  {tile && renderOpenedTile(tile)}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -2319,6 +2323,7 @@ function App() {
   const rightPlayer = opponents[2];
   const me = players.find((player) => player.id === myPlayerId);
   const isMyTurn = currentTurnPlayerId === myPlayerId;
+  const canDraw = isMyTurn && turnPhase === "draw";
 
   return (
     <>
@@ -2414,7 +2419,9 @@ function App() {
                     <div className="avatar">{topPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{topPlayer.name}</strong>
-                      <span className="player-subtitle">₺{getPlayerPrestige(topPlayer)}</span>
+                      <span className="player-subtitle">
+                        ₺{getPlayerPrestige(topPlayer)}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -2428,7 +2435,9 @@ function App() {
                     <div className="avatar">{leftPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{leftPlayer.name}</strong>
-                      <span className="player-subtitle">₺{getPlayerPrestige(leftPlayer)}</span>
+                      <span className="player-subtitle">
+                        ₺{getPlayerPrestige(leftPlayer)}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -2442,7 +2451,9 @@ function App() {
                     <div className="avatar">{rightPlayer.name[0]}</div>
                     <div className="player-info">
                       <strong>{rightPlayer.name}</strong>
-                      <span className="player-subtitle">₺{getPlayerPrestige(rightPlayer)}</span>
+                      <span className="player-subtitle">
+                        ₺{getPlayerPrestige(rightPlayer)}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -2497,8 +2508,12 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="deck-back-box">
-                    <span>Kalan</span>
+                  <div
+                    className={`deck-back-box ${canDraw ? "" : "disabled-deck"}`}
+                    onClick={drawTile}
+                    title="Taş çek"
+                  >
+                    <span>Kalan / Taş Çek</span>
                     <div className="deck-back-tile">{deckCount}</div>
                   </div>
                 </div>
@@ -2547,17 +2562,6 @@ function App() {
                   <div className="rack-wood-bottom"></div>
                 </div>
               </div>
-            </div>
-
-            <div className="bottom-actions">
-              <button
-                onClick={drawTile}
-                className={!isMyTurn || turnPhase !== "draw" ? "disabled-action" : ""}
-              >
-                Taş Çek
-              </button>
-              <button className="secondary">Yerden Al</button>
-              <button className="start">101 Aç</button>
             </div>
           </div>
         )}

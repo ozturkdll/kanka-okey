@@ -311,6 +311,9 @@ function openGroups(socket, roomCode, groups, mode) {
   const openedGroups = [];
   const usedIds = new Set();
 
+  let totalSeriesScore = 0;
+  let totalPairCount = 0;
+
   for (const groupIds of groups) {
     if (!Array.isArray(groupIds) || groupIds.length === 0) continue;
 
@@ -345,6 +348,14 @@ function openGroups(socket, roomCode, groups, mode) {
       return;
     }
 
+    if (mode === "series") {
+      totalSeriesScore += evaluation.score;
+    }
+
+    if (mode === "pairs") {
+      totalPairCount += 1;
+    }
+
     openedGroups.push({
       id: `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       playerId: socket.id,
@@ -355,6 +366,16 @@ function openGroups(socket, roomCode, groups, mode) {
 
   if (!openedGroups.length) {
     socket.emit("error-message", "Açılacak geçerli taş yok.");
+    return;
+  }
+
+  if (mode === "series" && totalSeriesScore < 101) {
+    socket.emit("error-message", `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`);
+    return;
+  }
+
+  if (mode === "pairs" && totalPairCount < 5) {
+    socket.emit("error-message", `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`);
     return;
   }
 
