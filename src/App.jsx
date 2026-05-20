@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
@@ -435,6 +435,7 @@ input:focus {
   flex: 3;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
   gap: 7px;
   padding: 7px;
 }
@@ -990,10 +991,6 @@ function App() {
   const [isOverMyDiscard, setIsOverMyDiscard] = useState(false);
   const [flippedOkeyIds, setFlippedOkeyIds] = useState(() => new Set());
   const [heldOkeyTileId, setHeldOkeyTileId] = useState(null);
-  const [handSummary, setHandSummary] = useState({
-    seriPuan: 0,
-    ciftSayisi: 0,
-  });
 
   const rackBoardRef = useRef(null);
   const pendingDiscardRef = useRef(null);
@@ -1032,7 +1029,6 @@ function App() {
       setDiscardedTile(data.discardedTile);
       setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
       setTilePositions(createInitialTilePositions(data.myHand));
-      setHandSummary({ seriPuan: 0, ciftSayisi: 0 });
       setDraggingTile(null);
       setIsOverMyDiscard(false);
       pendingDiscardRef.current = null;
@@ -1509,6 +1505,179 @@ function App() {
     setIsOverMyDiscard(false);
   }
 
+  function getManualGroupsFromRack() {
+    const placedTiles = myHand
+      .map((tile) => {
+        const position = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
+
+        return {
+          tile,
+          row: closestRackRow(position.y),
+          slot: positionToSlot(position.x),
+        };
+      })
+      .sort((a, b) => a.row - b.row || a.slot - b.slot);
+
+    const groups = [];
+    let currentGroup = [];
+
+    placedTiles.forEach((item) => {
+      const last = currentGroup[currentGroup.length - 1];
+
+      if (!last) {
+        currentGroup = [item];
+        return;
+      }
+
+      const sameRow = item.row === last.row;
+      const closeEnough = item.slot - last.slot <= 1;
+
+      if (sameRow && closeEnough) {
+        currentGroup.push(item);
+      } else {
+        groups.push(currentGroup.map((groupItem) => groupItem.tile));
+        currentGroup = [item];
+      }
+    });
+
+    if (currentGroup.length) {
+      groups.push(currentGroup.map((groupItem) => groupItem.tile));
+    }
+
+    return groups;
+  }
+
+  function evaluateGroup(group) {
+    if (!group || group.length < 2) {
+      return {
+        type: "none",
+        score: 0,
+      };
+    }
+
+    const realOkeys = group.filter((tile) => isRealOkeyTile(tile));
+    const normalTiles = group
+      .filter((tile) => !isRealOkeyTile(tile))
+      .map((tile) => getEffectiveTile(tile));
+
+    if (group.length === 2) {
+      if (normalTiles.length === 2) {
+        const same =
+          normalTiles[0].color === normalTiles[1].color &&
+          normalTiles[0].number === normalTiles[1].number;
+
+        return {
+          type: same ? "pair" : "none",
+          score: same ? 1 : 0,
+        };
+      }
+
+      if (normalTiles.length === 1 && realOkeys.length === 1) {
+        return {
+          type: "pair",
+          score: 1,
+        };
+      }
+    }
+
+    if (group.length >= 3) {
+      const colors = ["yellow", "blue", "black", "red"];
+      let bestRunScore = 0;
+
+      colors.forEach((color) => {
+        for (let start = 1; start <= 14 - group.length; start++) {
+          const needed = Array.from(
+            { length: group.length },
+            (_, index) => start + index
+          );
+
+          const usedIds = new Set();
+          let missing = 0;
+
+          needed.forEach((number) => {
+            const found = normalTiles.find((tile) => {
+              if (usedIds.has(tile.id)) return false;
+
+              return tile.color === color && tile.number === number;
+            });
+
+            if (found) {
+              usedIds.add(found.id);
+            } else {
+              missing++;
+            }
+          });
+
+          if (missing === realOkeys.length && usedIds.size === normalTiles.length) {
+            const score = needed.reduce((sum, number) => sum + number, 0);
+            bestRunScore = Math.max(bestRunScore, score);
+          }
+        }
+      });
+
+      let bestSetScore = 0;
+
+      for (let number = 1; number <= 13; number++) {
+        const usedColors = new Set();
+        let valid = true;
+
+        normalTiles.forEach((tile) => {
+          if (tile.number !== number) {
+            valid = false;
+            return;
+          }
+
+          if (usedColors.has(tile.color)) {
+            valid = false;
+            return;
+          }
+
+          usedColors.add(tile.color);
+        });
+
+        if (valid && normalTiles.length + realOkeys.length === group.length) {
+          bestSetScore = Math.max(bestSetScore, number * group.length);
+        }
+      }
+
+      if (bestRunScore || bestSetScore) {
+        return {
+          type: "series",
+          score: Math.max(bestRunScore, bestSetScore),
+        };
+      }
+    }
+
+    return {
+      type: "none",
+      score: 0,
+    };
+  }
+
+  const liveHandSummary = useMemo(() => {
+    const manualGroups = getManualGroupsFromRack();
+
+    return manualGroups.reduce(
+      (summary, group) => {
+        const result = evaluateGroup(group);
+
+        if (result.type === "series") {
+          summary.seriPuan += result.score;
+        }
+
+        if (result.type === "pair") {
+          summary.ciftSayisi += result.score;
+        }
+
+        return summary;
+      },
+      {
+        seriPuan: 0,
+        ciftSayisi: 0,
+      }
+    );
+  }, [myHand, tilePositions]);
+
   function applyLayoutWithGroups(groups) {
     const positions = {};
     let row = 0;
@@ -1768,27 +1937,6 @@ function App() {
     return groups;
   }
 
-  function calculateSeriPuan() {
-    const groups = buildOkeyGroups("run");
-
-    return groups
-      .filter((group) => group.type === "run" || group.type === "set")
-      .reduce((sum, group) => sum + group.score, 0);
-  }
-
-  function calculateCiftSayisi() {
-    const groups = buildOkeyGroups("pair");
-
-    return groups.filter((group) => group.type === "pair").length;
-  }
-
-  function updateHandSummary() {
-    setHandSummary({
-      seriPuan: calculateSeriPuan(),
-      ciftSayisi: calculateCiftSayisi(),
-    });
-  }
-
   function handleArrange(mode) {
     if (!myHand.length) return;
 
@@ -1806,7 +1954,6 @@ function App() {
 
     const groups = buildOkeyGroups(mode);
     applyLayoutWithGroups(groups);
-    updateHandSummary();
   }
 
   function renderFreeTile(tile) {
@@ -2032,15 +2179,17 @@ function App() {
                     <div className="open-area-right-label">Çifte Açılan</div>
                     <div className="pair-slot"></div>
                     <div className="pair-slot"></div>
+                    <div className="pair-slot"></div>
+                    <div className="pair-slot"></div>
                   </div>
                 </div>
 
                 <div className="hand-summary-box">
                   <div className="hand-summary-item">
-                    Seri <strong>{handSummary.seriPuan}</strong>
+                    Seri <strong>{liveHandSummary.seriPuan}</strong>
                   </div>
                   <div className="hand-summary-item">
-                    Çift <strong>{handSummary.ciftSayisi}</strong>
+                    Çift <strong>{liveHandSummary.ciftSayisi}</strong>
                   </div>
                 </div>
 
