@@ -6,9 +6,9 @@ const socket = io("https://kanka-okey-server.onrender.com", {
 });
 
 const TILE_WIDTH = 42;
-const SLOT_WIDTH = 52;
+const SLOT_WIDTH = 45;
 const ROW_1_Y = 10;
-const ROW_2_Y = 72;
+const ROW_2_Y = 70;
 
 const styles = `
 * {
@@ -27,6 +27,7 @@ button {
   border: none;
   cursor: pointer;
   font-weight: bold;
+  font-family: inherit;
 }
 
 .page {
@@ -236,12 +237,12 @@ input:focus {
 
 .table-felt {
   position: relative;
-  min-height: 620px;
+  min-height: 640px;
   border-radius: 26px;
   overflow: hidden;
   background:
     radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 32%),
-    linear-gradient(160deg, #0e91aa, #075f87 58%, #064e6f);
+    linear-gradient(160deg, #0f95b1, #0a7397 55%, #075d80);
   box-shadow:
     inset 0 0 80px rgba(0, 0, 0, 0.28),
     inset 0 0 0 3px rgba(255, 255, 255, 0.08);
@@ -251,11 +252,11 @@ input:focus {
   content: "KANKA OKEY";
   position: absolute;
   left: 50%;
-  top: 42%;
+  top: 41%;
   transform: translate(-50%, -50%) rotate(-5deg);
   font-size: 54px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.05);
   pointer-events: none;
 }
 
@@ -268,7 +269,7 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(15, 23, 42, 0.93);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 18px;
   padding: 10px 13px;
@@ -290,6 +291,7 @@ input:focus {
   font-size: 12px;
   min-height: 14px;
   display: block;
+  font-weight: 700;
 }
 
 .avatar {
@@ -308,6 +310,10 @@ input:focus {
   flex-shrink: 0;
 }
 
+.player-info {
+  min-width: 0;
+}
+
 .top-player {
   left: 50%;
   top: 10px;
@@ -316,27 +322,35 @@ input:focus {
 
 .left-player {
   left: 16px;
-  top: 168px;
-  width: 72px;
-  height: 178px;
+  top: 146px;
+  width: 76px;
+  height: 172px;
   flex-direction: column;
   justify-content: center;
   padding: 10px 7px;
+}
+
+.left-player .player-info,
+.right-player .player-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .left-player strong,
 .left-player .player-subtitle {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  max-height: 92px;
+  max-height: 90px;
   max-width: unset;
 }
 
 .right-player {
   right: 16px;
-  top: 168px;
-  width: 72px;
-  height: 178px;
+  top: 146px;
+  width: 76px;
+  height: 172px;
   flex-direction: column;
   justify-content: center;
   padding: 10px 7px;
@@ -346,15 +360,15 @@ input:focus {
 .right-player .player-subtitle {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  max-height: 92px;
+  max-height: 90px;
   max-width: unset;
 }
 
 .my-player-card {
   left: 50%;
-  bottom: 176px;
+  bottom: 196px;
   transform: translateX(-50%);
-  min-width: 160px;
+  min-width: 168px;
   justify-content: center;
 }
 
@@ -385,31 +399,32 @@ input:focus {
 
 .open-area {
   position: absolute;
-  left: 27%;
-  right: 23%;
-  top: 148px;
-  height: 190px;
+  left: 108px;
+  right: 108px;
+  top: 92px;
+  bottom: 230px;
   z-index: 5;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   background:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    rgba(2, 6, 23, 0.07);
-  background-size: 34px 34px;
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    rgba(2, 6, 23, 0.06);
+  background-size: 36px 36px;
   box-shadow:
-    inset 0 0 35px rgba(255, 255, 255, 0.025),
-    0 0 20px rgba(255, 255, 255, 0.04);
+    inset 0 0 35px rgba(255, 255, 255, 0.02),
+    0 0 16px rgba(255, 255, 255, 0.035);
+  border-radius: 8px;
   pointer-events: none;
 }
 
 .open-area-label {
   position: absolute;
   left: 10px;
-  top: -22px;
-  color: rgba(255, 255, 255, 0.56);
+  top: -21px;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
   font-weight: 900;
-  background: rgba(2, 6, 23, 0.45);
+  background: rgba(2, 6, 23, 0.42);
   border-radius: 999px;
   padding: 3px 8px;
 }
@@ -419,25 +434,25 @@ input:focus {
 .center-tools {
   position: absolute;
   z-index: 42;
-  right: 150px;
-  bottom: 178px;
+  right: 120px;
+  bottom: 210px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .indicator-tile,
 .deck-back-box {
-  width: 70px;
-  height: 78px;
+  width: 64px;
+  height: 72px;
   border-radius: 12px;
-  background: rgba(2, 6, 23, 0.72);
+  background: rgba(2, 6, 23, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .indicator-tile span,
@@ -447,8 +462,8 @@ input:focus {
 }
 
 .deck-back-tile {
-  width: 36px;
-  height: 46px;
+  width: 34px;
+  height: 44px;
   border-radius: 7px;
   background:
     repeating-linear-gradient(
@@ -474,8 +489,8 @@ input:focus {
 .table-discard-zone {
   position: absolute;
   z-index: 44;
-  width: 50px;
-  height: 62px;
+  width: 48px;
+  height: 60px;
   padding: 0;
   border-radius: 9px;
   border: 2px dashed rgba(255, 255, 255, 0.55);
@@ -489,7 +504,7 @@ input:focus {
 
 .table-discard-zone span {
   position: absolute;
-  top: -20px;
+  top: -19px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;
@@ -501,23 +516,23 @@ input:focus {
 }
 
 .top-left-discard-zone {
-  left: 120px;
-  top: 92px;
+  left: 116px;
+  top: 78px;
 }
 
 .top-right-discard-zone {
-  right: 120px;
-  top: 92px;
+  right: 116px;
+  top: 78px;
 }
 
 .bottom-left-discard-zone {
-  left: 120px;
-  bottom: 195px;
+  left: 116px;
+  bottom: 214px;
 }
 
 .bottom-right-discard-zone {
-  right: 120px;
-  bottom: 195px;
+  right: 116px;
+  bottom: 214px;
 }
 
 .my-table-discard-zone {
@@ -532,11 +547,40 @@ input:focus {
 }
 
 .empty-discard-slot {
-  width: 42px;
-  height: 54px;
+  width: 40px;
+  height: 52px;
   border-radius: 7px;
   border: 2px dashed #94a3b8;
   background: rgba(255, 255, 255, 0.04);
+}
+
+/* LEFT ACTION STACK */
+
+.left-action-stack {
+  position: absolute;
+  left: 14px;
+  bottom: 24px;
+  z-index: 60;
+  width: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.left-action-stack button {
+  width: 100%;
+  padding: 8px 7px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-size: 11px;
+  line-height: 1.15;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
+}
+
+.left-action-stack button:hover {
+  background: rgba(30, 41, 59, 0.96);
 }
 
 /* RACK */
@@ -584,7 +628,7 @@ input:focus {
 .free-rack-board {
   position: relative;
   width: 100%;
-  height: 136px;
+  height: 132px;
   background:
     linear-gradient(180deg, rgba(80, 43, 14, 0.35), rgba(50, 26, 8, 0.45));
   border-radius: 10px;
@@ -596,19 +640,19 @@ input:focus {
   position: absolute;
   left: 6px;
   right: 6px;
-  height: 58px;
+  height: 56px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   pointer-events: none;
 }
 
 .lane-top {
-  top: 8px;
+  top: 7px;
 }
 
 .lane-bottom {
-  top: 70px;
+  top: 68px;
 }
 
 /* TILES */
@@ -732,15 +776,8 @@ input:focus {
   }
 
   .table-felt {
-    min-height: 630px;
+    min-height: 670px;
     border-radius: 18px;
-  }
-
-  .open-area {
-    left: 22%;
-    right: 18%;
-    top: 185px;
-    height: 145px;
   }
 
   .top-player {
@@ -748,17 +785,17 @@ input:focus {
   }
 
   .left-player {
-    top: 110px;
+    top: 124px;
     left: 8px;
-    width: 66px;
-    height: 150px;
+    width: 64px;
+    height: 146px;
   }
 
   .right-player {
-    top: 110px;
+    top: 124px;
     right: 8px;
-    width: 66px;
-    height: 150px;
+    width: 64px;
+    height: 146px;
   }
 
   .player-badge {
@@ -772,46 +809,64 @@ input:focus {
     border-width: 2px;
   }
 
+  .open-area {
+    left: 82px;
+    right: 82px;
+    top: 84px;
+    bottom: 232px;
+  }
+
   .top-left-discard-zone {
-    left: 95px;
-    top: 135px;
+    left: 82px;
+    top: 74px;
   }
 
   .top-right-discard-zone {
-    right: 95px;
-    top: 135px;
+    right: 82px;
+    top: 74px;
   }
 
   .bottom-left-discard-zone {
-    left: 95px;
-    bottom: 170px;
+    left: 82px;
+    bottom: 208px;
   }
 
   .bottom-right-discard-zone {
-    right: 95px;
-    bottom: 170px;
+    right: 82px;
+    bottom: 208px;
   }
 
   .center-tools {
-    right: 95px;
-    bottom: 162px;
+    right: 84px;
+    bottom: 202px;
   }
 
   .indicator-tile,
   .deck-back-box {
-    width: 64px;
-    height: 74px;
+    width: 58px;
+    height: 68px;
   }
 
   .my-player-card {
     left: 50%;
-    bottom: 158px;
+    bottom: 190px;
     padding: 7px;
-    min-width: 140px;
+    min-width: 144px;
+  }
+
+  .left-action-stack {
+    left: 8px;
+    bottom: 8px;
+    width: 74px;
+  }
+
+  .left-action-stack button {
+    font-size: 10px;
+    padding: 7px 5px;
   }
 
   .rack {
-    left: 8px;
+    left: 88px;
     right: 8px;
     bottom: 8px;
   }
@@ -1132,9 +1187,7 @@ function App() {
 
       const canPush = pushRight(row, slot + 1);
 
-      if (!canPush) {
-        return false;
-      }
+      if (!canPush) return false;
 
       occupied[row][slot + 1] = occupyingTileId;
       delete occupied[row][slot];
@@ -1158,9 +1211,7 @@ function App() {
 
       const canPush = pushLeft(row, slot - 1);
 
-      if (!canPush) {
-        return false;
-      }
+      if (!canPush) return false;
 
       occupied[row][slot - 1] = occupyingTileId;
       delete occupied[row][slot];
@@ -1211,7 +1262,6 @@ function App() {
     if (!playerList || playerList.length === 0 || !currentId) return null;
 
     const currentIndex = playerList.findIndex((player) => player.id === currentId);
-
     if (currentIndex === -1) return null;
 
     const previousIndex = (currentIndex - 1 + playerList.length) % playerList.length;
@@ -1319,6 +1369,87 @@ function App() {
     setIsOverMyDiscard(false);
   }
 
+  function applyCompactLayout(tileList) {
+    const positions = {};
+
+    tileList.forEach((tile, index) => {
+      const row = index < 11 ? 0 : 1;
+      const col = row === 0 ? index : index - 11;
+
+      positions[tile.id] = {
+        x: slotToPosition(col),
+        y: row === 0 ? ROW_1_Y : ROW_2_Y,
+      };
+    });
+
+    setTilePositions((prev) => ({
+      ...prev,
+      ...positions,
+    }));
+  }
+
+  function handleArrange(mode) {
+    if (!myHand.length) return;
+
+    const colorOrder = {
+      yellow: 0,
+      blue: 1,
+      black: 2,
+      red: 3,
+    };
+
+    const tiles = [...myHand];
+
+    if (mode === "run") {
+      tiles.sort((a, b) => {
+        const ca = colorOrder[a.color] ?? 99;
+        const cb = colorOrder[b.color] ?? 99;
+        return ca - cb || a.number - b.number;
+      });
+    }
+
+    if (mode === "pair") {
+      tiles.sort((a, b) => {
+        return a.number - b.number || (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99);
+      });
+    }
+
+    if (mode === "doubleTiles") {
+      const counts = {};
+      tiles.forEach((tile) => {
+        counts[tile.number] = (counts[tile.number] || 0) + 1;
+      });
+
+      tiles.sort((a, b) => {
+        return (
+          (counts[b.number] || 0) - (counts[a.number] || 0) ||
+          a.number - b.number ||
+          (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99)
+        );
+      });
+    }
+
+    if (mode === "processRuns") {
+      tiles.sort((a, b) => {
+        return a.number - b.number || (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99);
+      });
+    }
+
+    if (mode === "collect") {
+      tiles.sort((a, b) => {
+        const pa = tilePositions[a.id] || { x: 12, y: ROW_1_Y };
+        const pb = tilePositions[b.id] || { x: 12, y: ROW_1_Y };
+
+        return (
+          closestRackRow(pa.y) - closestRackRow(pb.y) ||
+          pa.x - pb.x
+        );
+      });
+    }
+
+    applyCompactLayout(tiles);
+  }
+
   function renderFreeTile(tile) {
     const position = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
 
@@ -1358,6 +1489,22 @@ function App() {
         )}
       </div>
     );
+  }
+
+  function getPlayerPrestige(player) {
+    if (!player) return 0;
+
+    const value =
+      player.money ??
+      player.coins ??
+      player.balance ??
+      player.prestige ??
+      player.gold;
+
+    if (typeof value === "number") return value;
+
+    const index = players.findIndex((p) => p.id === player.id);
+    return 200 + (index + 1) * 17;
   }
 
   const opponents = players.filter((player) => player.id !== myPlayerId);
@@ -1462,11 +1609,9 @@ function App() {
                     }`}
                   >
                     <div className="avatar">{topPlayer.name[0]}</div>
-                    <div>
+                    <div className="player-info">
                       <strong>{topPlayer.name}</strong>
-                      <span className="player-subtitle">
-                        {currentTurnPlayerId === topPlayer.id ? "Sıra onda" : ""}
-                      </span>
+                      <span className="player-subtitle">₺{getPlayerPrestige(topPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -1478,11 +1623,9 @@ function App() {
                     }`}
                   >
                     <div className="avatar">{leftPlayer.name[0]}</div>
-                    <div>
+                    <div className="player-info">
                       <strong>{leftPlayer.name}</strong>
-                      <span className="player-subtitle">
-                        {currentTurnPlayerId === leftPlayer.id ? "Sıra onda" : ""}
-                      </span>
+                      <span className="player-subtitle">₺{getPlayerPrestige(leftPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -1494,11 +1637,9 @@ function App() {
                     }`}
                   >
                     <div className="avatar">{rightPlayer.name[0]}</div>
-                    <div>
+                    <div className="player-info">
                       <strong>{rightPlayer.name}</strong>
-                      <span className="player-subtitle">
-                        {currentTurnPlayerId === rightPlayer.id ? "Sıra onda" : ""}
-                      </span>
+                      <span className="player-subtitle">₺{getPlayerPrestige(rightPlayer)}</span>
                     </div>
                   </div>
                 )}
@@ -1526,7 +1667,7 @@ function App() {
                   <div className="open-area-label">Açılan Taş Alanı</div>
                 </div>
 
-                <div className="center-tools clean-center">
+                <div className="center-tools">
                   <div className="indicator-tile">
                     <span>Gösterge</span>
                     <div className="tile yellow center-static-tile">2</div>
@@ -1544,12 +1685,18 @@ function App() {
                   }`}
                 >
                   <div className="avatar">{me ? me.name[0] : "S"}</div>
-                  <div>
+                  <div className="player-info">
                     <strong>{me ? me.name : "Sen"}</strong>
-                    <span className="player-subtitle">
-                      {isMyTurn ? "Sıra sende" : ""}
-                    </span>
+                    <span className="player-subtitle">₺{getPlayerPrestige(me)}</span>
                   </div>
+                </div>
+
+                <div className="left-action-stack">
+                  <button onClick={() => handleArrange("run")}>Sıralı Diz</button>
+                  <button onClick={() => handleArrange("pair")}>Çift Diz</button>
+                  <button onClick={() => handleArrange("doubleTiles")}>Çift Taş</button>
+                  <button onClick={() => handleArrange("processRuns")}>Sıralı Taşları İşle</button>
+                  <button onClick={() => handleArrange("collect")}>Geri Topla</button>
                 </div>
 
                 <div className="rack">
