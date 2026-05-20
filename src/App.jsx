@@ -1584,7 +1584,8 @@ function App() {
       return;
     }
 
-    alert("Seçilen oyun modu: " + gameMode);\n    socket.emit("create-room", { name, gameMode });
+    alert("Seçilen oyun modu: " + gameMode);
+    socket.emit("create-room", { name, gameMode });
   }
 
   function joinRoom() {
