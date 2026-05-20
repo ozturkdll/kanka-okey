@@ -255,7 +255,7 @@ input:focus {
   content: "KANKA OKEY";
   position: absolute;
   left: 50%;
-  top: 41%;
+  top: 39%;
   transform: translate(-50%, -50%) rotate(-5deg);
   font-size: 54px;
   font-weight: 900;
@@ -369,10 +369,31 @@ input:focus {
 
 .my-player-card {
   left: 50%;
-  bottom: 208px;
+  bottom: 198px;
   transform: translateX(-50%);
-  min-width: 168px;
+  min-width: 138px;
+  height: 42px;
   justify-content: center;
+  padding: 5px 10px;
+  gap: 7px;
+  border-radius: 14px;
+}
+
+.my-player-card .avatar {
+  width: 30px;
+  height: 30px;
+  border-width: 2px;
+  font-size: 13px;
+}
+
+.my-player-card strong {
+  font-size: 12px;
+  max-width: 78px;
+}
+
+.my-player-card .player-subtitle {
+  font-size: 10px;
+  margin-top: 0;
 }
 
 .my-player-card .player-info,
@@ -408,7 +429,7 @@ input:focus {
   left: 104px;
   right: 104px;
   top: 88px;
-  bottom: 236px;
+  bottom: 285px;
   z-index: 5;
   display: flex;
   gap: 8px;
@@ -484,7 +505,7 @@ input:focus {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.022);
   box-shadow: inset 0 0 9px rgba(255, 255, 255, 0.012);
-  min-height: 12px;
+  min-height: 10px;
 }
 
 .open-area-label,
@@ -516,8 +537,8 @@ input:focus {
 .hand-summary-box {
   position: absolute;
   z-index: 42;
-  right: 260px;
-  bottom: 225px;
+  right: 310px;
+  bottom: 204px;
   width: 170px;
   height: 34px;
   border-radius: 999px;
@@ -546,7 +567,7 @@ input:focus {
   position: absolute;
   z-index: 42;
   right: 110px;
-  bottom: 220px;
+  bottom: 194px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -622,23 +643,23 @@ input:focus {
 }
 
 .top-left-discard-zone {
-  left: 116px;
-  top: 68px;
+  left: 18px;
+  top: 78px;
 }
 
 .top-right-discard-zone {
-  right: 116px;
-  top: 68px;
+  right: 18px;
+  top: 78px;
 }
 
 .bottom-left-discard-zone {
-  left: 116px;
-  bottom: 224px;
+  left: 18px;
+  bottom: 210px;
 }
 
 .bottom-right-discard-zone {
-  right: 48px;
-  bottom: 224px;
+  right: 18px;
+  bottom: 210px;
 }
 
 .my-table-discard-zone {
@@ -924,7 +945,7 @@ input:focus {
     left: 82px;
     right: 82px;
     top: 78px;
-    bottom: 240px;
+    bottom: 305px;
     gap: 6px;
   }
 
@@ -955,43 +976,64 @@ input:focus {
 
   .series-cell,
   .pair-cell {
-    min-height: 9px;
+    min-height: 8px;
     border-radius: 3px;
   }
 
+  .top-left-discard-zone {
+    left: 8px;
+    top: 72px;
+  }
+
+  .top-right-discard-zone {
+    right: 8px;
+    top: 72px;
+  }
+
+  .bottom-left-discard-zone {
+    left: 8px;
+    bottom: 218px;
+  }
+
   .bottom-right-discard-zone {
-    right: 22px;
+    right: 8px;
     bottom: 218px;
   }
 
   .hand-summary-box {
-    right: 200px;
-    bottom: 218px;
-    width: 145px;
-    height: 32px;
-    gap: 10px;
+    right: 176px;
+    bottom: 214px;
+    width: 140px;
+    height: 31px;
+    gap: 8px;
   }
 
   .hand-summary-item {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .center-tools {
-    right: 86px;
-    bottom: 214px;
+    right: 60px;
+    bottom: 206px;
+    gap: 6px;
   }
 
   .indicator-tile,
   .deck-back-box {
-    width: 56px;
-    height: 66px;
+    width: 50px;
+    height: 62px;
   }
 
   .my-player-card {
-    left: 50%;
-    bottom: 200px;
-    padding: 7px;
-    min-width: 144px;
+    bottom: 206px;
+    padding: 4px 8px;
+    min-width: 120px;
+    height: 38px;
+  }
+
+  .my-player-card .avatar {
+    width: 27px;
+    height: 27px;
   }
 
   .left-action-stack {
