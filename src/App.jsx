@@ -1,16 +1,830 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import "./App.css";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
   transports: ["websocket", "polling"],
 });
 
 const TILE_WIDTH = 42;
-const TILE_HEIGHT = 54;
 const SLOT_WIDTH = 52;
 const ROW_1_Y = 10;
 const ROW_2_Y = 72;
+
+const styles = `
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #07111f;
+  color: white;
+  overflow-x: hidden;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(34, 197, 94, 0.16), transparent 35%),
+    linear-gradient(135deg, #07111f, #0f172a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+/* HOME */
+
+.home-card {
+  width: 100%;
+  max-width: 430px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 26px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  justify-content: center;
+}
+
+.logo-chip {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+h1 {
+  margin: 0;
+  font-size: 38px;
+}
+
+h2 {
+  margin-top: 26px;
+}
+
+p {
+  color: #cbd5e1;
+}
+
+.status {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+input {
+  width: 100%;
+  margin-top: 14px;
+  padding: 15px;
+  border-radius: 14px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: white;
+  font-size: 16px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #22c55e;
+}
+
+.home-card button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 15px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  font-size: 17px;
+}
+
+.home-card button.secondary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.home-card button.start {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.divider {
+  margin: 20px 0 4px;
+  color: #94a3b8;
+}
+
+.room-code {
+  font-size: 42px;
+  letter-spacing: 8px;
+  font-weight: 900;
+  background: #020617;
+  border: 1px dashed #22c55e;
+  padding: 16px;
+  border-radius: 18px;
+  margin: 10px 0;
+}
+
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.player-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #334155;
+  margin-top: 9px;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.player-list span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* GAME */
+
+.okey-screen {
+  width: 100%;
+  max-width: 1120px;
+}
+
+.top-hud {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.menu-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fbbf24, #b45309);
+  color: #3b2108;
+  font-size: 24px;
+}
+
+.room-pill,
+.turn-pill,
+.mode-pill {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 9px 14px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+}
+
+.room-pill span {
+  color: #94a3b8;
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.turn-pill {
+  margin-left: auto;
+}
+
+.turn-pill.my-turn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.mode-pill {
+  background: rgba(2, 6, 23, 0.8);
+  color: #e2e8f0;
+}
+
+/* TABLE */
+
+.okey-table {
+  background: linear-gradient(135deg, #6b3f1d, #2f1b0d);
+  border-radius: 34px;
+  padding: 18px;
+  box-shadow:
+    inset 0 4px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -10px 0 rgba(0, 0, 0, 0.28),
+    0 35px 80px rgba(0, 0, 0, 0.48);
+}
+
+.table-felt {
+  position: relative;
+  min-height: 620px;
+  border-radius: 26px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 32%),
+    linear-gradient(160deg, #0e91aa, #075f87 58%, #064e6f);
+  box-shadow:
+    inset 0 0 80px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.08);
+}
+
+.table-felt::after {
+  content: "KANKA OKEY";
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%) rotate(-5deg);
+  font-size: 54px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+}
+
+/* PLAYER CARDS */
+
+.player-badge,
+.my-player-card {
+  position: absolute;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  padding: 10px 13px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.player-badge strong,
+.my-player-card strong {
+  display: block;
+  font-size: 14px;
+}
+
+.player-subtitle {
+  color: #facc15;
+  font-size: 12px;
+  min-height: 14px;
+  display: block;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at top, #bae6fd, #0284c7);
+  border: 3px solid #f8fafc;
+  color: #082f49;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.top-player {
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+}
+
+.left-player {
+  left: 14px;
+  top: 115px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.left-player .avatar,
+.left-player div {
+  writing-mode: horizontal-tb;
+  transform: rotate(180deg);
+}
+
+.right-player {
+  right: 14px;
+  top: 115px;
+  writing-mode: vertical-rl;
+}
+
+.right-player .avatar,
+.right-player div {
+  writing-mode: horizontal-tb;
+  transform: rotate(0deg);
+}
+
+.my-player-card {
+  left: 16px;
+  bottom: 42px;
+}
+
+.my-player-card.active-turn,
+.player-badge.active-turn {
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.9),
+    0 0 32px rgba(34, 197, 94, 0.85),
+    0 14px 30px rgba(0, 0, 0, 0.35);
+  border-color: rgba(34, 197, 94, 0.95);
+}
+
+.my-player-card.active-turn::after,
+.player-badge.active-turn::after {
+  content: "SIRA";
+  position: absolute;
+  top: -14px;
+  right: 10px;
+  background: #22c55e;
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+/* CENTER OPEN AREA */
+
+.open-area {
+  position: absolute;
+  left: 28%;
+  right: 22%;
+  top: 150px;
+  height: 190px;
+  z-index: 5;
+  border: 2px solid rgba(217, 70, 239, 0.9);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    rgba(2, 6, 23, 0.08);
+  background-size: 42px 42px;
+  box-shadow:
+    inset 0 0 35px rgba(255, 255, 255, 0.03),
+    0 0 20px rgba(217, 70, 239, 0.18);
+  pointer-events: none;
+}
+
+.open-area-label {
+  position: absolute;
+  left: 12px;
+  top: -24px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(2, 6, 23, 0.55);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+/* CENTER TOOLS */
+
+.center-tools {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 178px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.indicator-tile,
+.deck-back-box {
+  width: 70px;
+  height: 78px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.indicator-tile span,
+.deck-back-box span {
+  color: #cbd5e1;
+  font-size: 10px;
+}
+
+.deck-back-tile {
+  width: 36px;
+  height: 46px;
+  border-radius: 7px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #f8fafc,
+      #f8fafc 5px,
+      #fecaca 5px,
+      #fecaca 10px
+    );
+  color: #991b1b;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  box-shadow:
+    inset 0 -4px 0 rgba(0, 0, 0, 0.13),
+    0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+/* DISCARD ZONES */
+
+.table-discard-zone {
+  position: absolute;
+  z-index: 40;
+  width: 50px;
+  height: 62px;
+  padding: 0;
+  border-radius: 9px;
+  border: 2px dashed rgba(255, 255, 255, 0.55);
+  background: rgba(2, 6, 23, 0.5);
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.table-discard-zone span {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #cbd5e1;
+  white-space: nowrap;
+  background: rgba(2, 6, 23, 0.75);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.top-left-discard-zone {
+  left: 120px;
+  top: 92px;
+}
+
+.top-right-discard-zone {
+  right: 120px;
+  top: 92px;
+}
+
+.bottom-left-discard-zone {
+  left: 120px;
+  bottom: 195px;
+}
+
+.bottom-right-discard-zone {
+  right: 120px;
+  bottom: 195px;
+}
+
+.my-table-discard-zone {
+  border-color: rgba(34, 197, 94, 0.95);
+  background: rgba(34, 197, 94, 0.18);
+}
+
+.discard-zone-hover {
+  background: rgba(34, 197, 94, 0.75);
+  border-color: white;
+  transform: scale(1.08);
+}
+
+.empty-discard-slot {
+  width: 42px;
+  height: 54px;
+  border-radius: 7px;
+  border: 2px dashed #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* RACK */
+
+.rack {
+  position: absolute;
+  z-index: 50;
+  left: 115px;
+  right: 22px;
+  bottom: 18px;
+  overflow: visible;
+}
+
+.rack-main {
+  display: block;
+  padding: 10px 12px;
+  overflow: visible;
+  background:
+    linear-gradient(180deg, #d9a55b, #9a5f24 55%, #6b3f1d);
+  border-left: 5px solid #4b2a10;
+  border-right: 5px solid #4b2a10;
+  box-shadow:
+    inset 0 8px 12px rgba(255, 255, 255, 0.18),
+    inset 0 -8px 12px rgba(0, 0, 0, 0.28);
+}
+
+.rack-wood-top {
+  height: 16px;
+  border-radius: 14px 14px 4px 4px;
+  background:
+    linear-gradient(180deg, #f3c27b, #9a5f24);
+  border: 4px solid #613915;
+  border-bottom: none;
+}
+
+.rack-wood-bottom {
+  height: 18px;
+  border-radius: 4px 4px 14px 14px;
+  background:
+    linear-gradient(180deg, #8a511f, #4b2a10);
+  border: 4px solid #613915;
+  border-top: none;
+}
+
+.free-rack-board {
+  position: relative;
+  width: 100%;
+  height: 136px;
+  background:
+    linear-gradient(180deg, rgba(80, 43, 14, 0.35), rgba(50, 26, 8, 0.45));
+  border-radius: 10px;
+  overflow: visible;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.25);
+}
+
+.rack-lane {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 58px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.lane-top {
+  top: 8px;
+}
+
+.lane-bottom {
+  top: 70px;
+}
+
+/* TILES */
+
+.tile {
+  width: 42px;
+  height: 54px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 7px;
+  color: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 900;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  box-shadow:
+    inset 0 -4px 0 rgba(0, 0, 0, 0.13),
+    0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+.free-rack-board .tile {
+  position: absolute;
+  margin: 0;
+  z-index: 10;
+}
+
+.free-rack-board .tile.dragging-tile {
+  z-index: 99999;
+  cursor: grabbing;
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.8),
+    0 18px 34px rgba(0, 0, 0, 0.55);
+}
+
+.table-discard-zone .tile {
+  position: static;
+  margin: 0;
+  cursor: default;
+}
+
+.center-static-tile {
+  position: static !important;
+  cursor: default !important;
+}
+
+.tile.red {
+  color: #dc2626;
+}
+
+.tile.blue {
+  color: #2563eb;
+}
+
+.tile.black {
+  color: #020617;
+}
+
+.tile.yellow {
+  color: #ca8a04;
+}
+
+.tile.fake {
+  color: #7c3aed;
+  border-color: #a855f7;
+}
+
+/* BOTTOM BUTTONS */
+
+.bottom-actions {
+  display: none;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.bottom-actions button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  color: white;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.bottom-actions button.secondary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.bottom-actions button.start {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+/* MOBILE */
+
+@media (max-width: 900px) {
+  .page {
+    padding: 8px;
+    align-items: flex-start;
+  }
+
+  .okey-screen {
+    max-width: 100%;
+  }
+
+  .top-hud {
+    height: auto;
+    flex-wrap: wrap;
+  }
+
+  .turn-pill {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  .okey-table {
+    padding: 9px;
+    border-radius: 22px;
+  }
+
+  .table-felt {
+    min-height: 630px;
+    border-radius: 18px;
+  }
+
+  .open-area {
+    left: 22%;
+    right: 18%;
+    top: 185px;
+    height: 145px;
+  }
+
+  .top-player {
+    top: 8px;
+  }
+
+  .left-player {
+    top: 90px;
+    left: 8px;
+  }
+
+  .right-player {
+    top: 90px;
+    right: 8px;
+  }
+
+  .player-badge {
+    padding: 7px 9px;
+    gap: 7px;
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-width: 2px;
+  }
+
+  .top-left-discard-zone {
+    left: 95px;
+    top: 135px;
+  }
+
+  .top-right-discard-zone {
+    right: 95px;
+    top: 135px;
+  }
+
+  .bottom-left-discard-zone {
+    left: 95px;
+    bottom: 170px;
+  }
+
+  .bottom-right-discard-zone {
+    right: 95px;
+    bottom: 170px;
+  }
+
+  .center-tools {
+    bottom: 170px;
+  }
+
+  .indicator-tile,
+  .deck-back-box {
+    width: 64px;
+    height: 74px;
+  }
+
+  .my-player-card {
+    left: 8px;
+    bottom: 92px;
+    padding: 7px;
+  }
+
+  .rack {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .free-rack-board {
+    height: 126px;
+  }
+
+  .lane-top {
+    top: 7px;
+  }
+
+  .lane-bottom {
+    top: 65px;
+  }
+
+  .tile {
+    width: 34px;
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .empty-discard-slot {
+    width: 34px;
+    height: 48px;
+  }
+
+  .table-discard-zone {
+    width: 42px;
+    height: 56px;
+  }
+
+  .bottom-actions {
+    display: flex;
+  }
+}
+`;
 
 function App() {
   const [name, setName] = useState("");
@@ -26,6 +840,7 @@ function App() {
   const [deckCount, setDeckCount] = useState(0);
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState("");
   const [discardedTile, setDiscardedTile] = useState(null);
+  const [lastDiscardedByPlayerId, setLastDiscardedByPlayerId] = useState(null);
 
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
@@ -65,6 +880,7 @@ function App() {
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
+      setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
       setTilePositions(createInitialTilePositions(data.myHand));
       setDraggingTile(null);
       setIsOverMyDiscard(false);
@@ -72,6 +888,11 @@ function App() {
     });
 
     socket.on("game-updated", (data) => {
+      const inferredLastDiscardedBy = getPreviousPlayerIdFromList(
+        data.players,
+        data.currentTurnPlayerId
+      );
+
       setRoomCode(data.roomCode);
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
@@ -79,6 +900,9 @@ function App() {
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
+      setLastDiscardedByPlayerId(
+        data.lastDiscardedByPlayerId || inferredLastDiscardedBy
+      );
       setTilePositions((prev) => reconcileTilePositions(data.myHand, prev));
       setDraggingTile(null);
       setIsOverMyDiscard(false);
@@ -103,6 +927,7 @@ function App() {
         }));
 
         setDiscardedTile(pending.previousDiscardedTile);
+        setLastDiscardedByPlayerId(pending.previousLastDiscardedByPlayerId);
         pendingDiscardRef.current = null;
       }
     });
@@ -251,11 +1076,8 @@ function App() {
   }
 
   function snapTileToRack(tileId) {
-    const boardWidth = getRackWidth();
-
     setTilePositions((prev) => {
       const current = prev[tileId] || { x: 12, y: ROW_1_Y };
-
       const targetRow = closestRackRow(current.y);
       const maxSlot = getMaxSlot();
       const targetSlot = clamp(positionToSlot(current.x), 0, maxSlot);
@@ -369,6 +1191,17 @@ function App() {
     return clamp(targetSlot, 0, maxSlot);
   }
 
+  function getPreviousPlayerIdFromList(playerList, currentId) {
+    if (!playerList || playerList.length === 0 || !currentId) return null;
+
+    const currentIndex = playerList.findIndex((player) => player.id === currentId);
+
+    if (currentIndex === -1) return null;
+
+    const previousIndex = (currentIndex - 1 + playerList.length) % playerList.length;
+    return playerList[previousIndex]?.id || null;
+  }
+
   function isPointerOverMyDiscardZone(e, draggedElement) {
     draggedElement.style.pointerEvents = "none";
     const elementUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
@@ -428,14 +1261,17 @@ function App() {
 
       const previousPosition = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
       const previousDiscardedTile = discardedTile;
+      const previousLastDiscardedByPlayerId = lastDiscardedByPlayerId;
 
       pendingDiscardRef.current = {
         tile,
         position: previousPosition,
         previousDiscardedTile,
+        previousLastDiscardedByPlayerId,
       };
 
       setDiscardedTile(tile);
+      setLastDiscardedByPlayerId(myPlayerId);
       setMyHand((prev) => prev.filter((handTile) => handTile.id !== tile.id));
       setTilePositions((prev) => {
         const next = { ...prev };
@@ -490,6 +1326,24 @@ function App() {
     );
   }
 
+  function renderDiscardZoneForPlayer(playerId, className, label = "Atılan") {
+    const shouldShowTile =
+      discardedTile && playerId && playerId === lastDiscardedByPlayerId;
+
+    return (
+      <div className={`table-discard-zone ${className}`}>
+        <span>{label}</span>
+        {shouldShowTile ? (
+          <div className={getTileClass(discardedTile)}>
+            {getTileText(discardedTile)}
+          </div>
+        ) : (
+          <div className="empty-discard-slot"></div>
+        )}
+      </div>
+    );
+  }
+
   const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
     (player) => player.id === currentTurnPlayerId
@@ -502,206 +1356,211 @@ function App() {
   const isMyTurn = currentTurnPlayerId === myPlayerId;
 
   return (
-    <div className="page">
-      {!inRoom ? (
-        <div className="home-card">
-          <div className="logo-row">
-            <div className="logo-chip">K</div>
-            <div>
-              <h1>Kanka Okey</h1>
-              <p>Oda kur, link at, çipsiz oyna.</p>
+    <>
+      <style>{styles}</style>
+
+      <div className="page">
+        {!inRoom ? (
+          <div className="home-card">
+            <div className="logo-row">
+              <div className="logo-chip">K</div>
+              <div>
+                <h1>Kanka Okey</h1>
+                <p>Oda kur, link at, çipsiz oyna.</p>
+              </div>
             </div>
-          </div>
 
-          <p className="status">{connectionStatus}</p>
+            <p className="status">{connectionStatus}</p>
 
-          <input
-            placeholder="İsmini yaz"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+            <input
+              placeholder="İsmini yaz"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
 
-          <button onClick={createRoom}>Masa Kur</button>
+            <button onClick={createRoom}>Masa Kur</button>
 
-          <div className="divider">veya</div>
+            <div className="divider">veya</div>
 
-          <input
-            placeholder="Oda kodu"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-          />
+            <input
+              placeholder="Oda kodu"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+            />
 
-          <button className="secondary" onClick={joinRoom}>
-            Odaya Katıl
-          </button>
-        </div>
-      ) : !gameStarted ? (
-        <div className="home-card">
-          <h1>Bekleme Odası</h1>
-
-          <p>Oda kodu:</p>
-          <div className="room-code">{roomCode}</div>
-
-          <button onClick={copyRoomCode}>Kodu Kopyala</button>
-
-          <h2>Oyuncular</h2>
-
-          <ul className="player-list">
-            {players.map((player, index) => (
-              <li key={player.id}>
-                <span>{index + 1}</span>
-                {player.name}
-              </li>
-            ))}
-          </ul>
-
-          <p className="status">{players.length}/4 kişi odada.</p>
-
-          {players.length === 4 && (
-            <button className="start" onClick={startGame}>
-              Oyunu Başlat
+            <button className="secondary" onClick={joinRoom}>
+              Odaya Katıl
             </button>
-          )}
-        </div>
-      ) : (
-        <div className="okey-screen">
-          <div className="top-hud">
-            <button className="menu-btn">☰</button>
-
-            <div className="room-pill">
-              <span>Oda</span>
-              <strong>{roomCode}</strong>
-            </div>
-
-            <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
-              Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}
-            </div>
-
-            <div className="mode-pill">Katlamasız</div>
           </div>
+        ) : !gameStarted ? (
+          <div className="home-card">
+            <h1>Bekleme Odası</h1>
 
-          <div className="okey-table">
-            <div className={`table-felt ${isMyTurn ? "table-my-turn" : ""}`}>
-              {topPlayer && (
-                <div
-                  className={`player-badge top-player ${
-                    currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
-                  }`}
-                >
-                  <div className="avatar">{topPlayer.name[0]}</div>
-                  <div>
-                    <strong>{topPlayer.name}</strong>
-                    <span>Rakip</span>
-                  </div>
-                </div>
-              )}
+            <p>Oda kodu:</p>
+            <div className="room-code">{roomCode}</div>
 
-              {leftPlayer && (
-                <div
-                  className={`player-badge left-player ${
-                    currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
-                  }`}
-                >
-                  <div className="avatar">{leftPlayer.name[0]}</div>
-                  <div>
-                    <strong>{leftPlayer.name}</strong>
-                    <span>Rakip</span>
-                  </div>
-                </div>
-              )}
+            <button onClick={copyRoomCode}>Kodu Kopyala</button>
 
-              {rightPlayer && (
-                <div
-                  className={`player-badge right-player ${
-                    currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
-                  }`}
-                >
-                  <div className="avatar">{rightPlayer.name[0]}</div>
-                  <div>
-                    <strong>{rightPlayer.name}</strong>
-                    <span>Rakip</span>
-                  </div>
-                </div>
-              )}
+            <h2>Oyuncular</h2>
 
-              <div className="table-discard-zone top-left-discard-zone">
-                <span>Atılan</span>
-                <div className="empty-discard-slot"></div>
+            <ul className="player-list">
+              {players.map((player, index) => (
+                <li key={player.id}>
+                  <span>{index + 1}</span>
+                  {player.name}
+                </li>
+              ))}
+            </ul>
+
+            <p className="status">{players.length}/4 kişi odada.</p>
+
+            {players.length === 4 && (
+              <button className="start" onClick={startGame}>
+                Oyunu Başlat
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="okey-screen">
+            <div className="top-hud">
+              <button className="menu-btn">☰</button>
+
+              <div className="room-pill">
+                <span>Oda</span>
+                <strong>{roomCode}</strong>
               </div>
 
-              <div className="table-discard-zone top-right-discard-zone">
-                <span>Atılan</span>
-                <div className="empty-discard-slot"></div>
+              <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
+                Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}
               </div>
 
-              <div className="table-discard-zone bottom-left-discard-zone">
-                <span>Atılan</span>
-                <div className="empty-discard-slot"></div>
-              </div>
+              <div className="mode-pill">Katlamasız</div>
+            </div>
 
-              <div
-                className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
-                  isOverMyDiscard ? "discard-zone-hover" : ""
-                }`}
-              >
-                <span>TAŞ AT</span>
-                {discardedTile ? (
-                  <div className={getTileClass(discardedTile)}>
-                    {getTileText(discardedTile)}
+            <div className="okey-table">
+              <div className="table-felt">
+                {topPlayer && (
+                  <div
+                    className={`player-badge top-player ${
+                      currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
+                    }`}
+                  >
+                    <div className="avatar">{topPlayer.name[0]}</div>
+                    <div>
+                      <strong>{topPlayer.name}</strong>
+                      <span className="player-subtitle">
+                        {currentTurnPlayerId === topPlayer.id ? "Sıra onda" : ""}
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="empty-discard-slot"></div>
                 )}
-              </div>
 
-              <div className="center-tools clean-center">
-                <div className="indicator-tile">
-                  <span>Gösterge</span>
-                  <div className="tile yellow center-static-tile">2</div>
+                {leftPlayer && (
+                  <div
+                    className={`player-badge left-player ${
+                      currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
+                    }`}
+                  >
+                    <div className="avatar">{leftPlayer.name[0]}</div>
+                    <div>
+                      <strong>{leftPlayer.name}</strong>
+                      <span className="player-subtitle">
+                        {currentTurnPlayerId === leftPlayer.id ? "Sıra onda" : ""}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {rightPlayer && (
+                  <div
+                    className={`player-badge right-player ${
+                      currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
+                    }`}
+                  >
+                    <div className="avatar">{rightPlayer.name[0]}</div>
+                    <div>
+                      <strong>{rightPlayer.name}</strong>
+                      <span className="player-subtitle">
+                        {currentTurnPlayerId === rightPlayer.id ? "Sıra onda" : ""}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {renderDiscardZoneForPlayer(leftPlayer?.id, "top-left-discard-zone")}
+                {renderDiscardZoneForPlayer(topPlayer?.id, "top-right-discard-zone")}
+                {renderDiscardZoneForPlayer(rightPlayer?.id, "bottom-left-discard-zone")}
+
+                <div
+                  className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
+                    isOverMyDiscard ? "discard-zone-hover" : ""
+                  }`}
+                >
+                  <span>TAŞ AT</span>
+                  {discardedTile && lastDiscardedByPlayerId === myPlayerId ? (
+                    <div className={getTileClass(discardedTile)}>
+                      {getTileText(discardedTile)}
+                    </div>
+                  ) : (
+                    <div className="empty-discard-slot"></div>
+                  )}
                 </div>
 
-                <div className="deck-back-box">
-                  <span>Kalan</span>
-                  <div className="deck-back-tile">{deckCount}</div>
+                <div className="open-area">
+                  <div className="open-area-label">Açılan Taş Alanı</div>
                 </div>
-              </div>
 
-              <div
-                className={`my-player-card ${
-                  currentTurnPlayerId === myPlayerId ? "active-turn" : ""
-                }`}
-              >
-                <div className="avatar">{me ? me.name[0] : "S"}</div>
-                <div>
-                  <strong>{me ? me.name : "Sen"}</strong>
-                  <span>{isMyTurn ? "Sıra sende" : "Bekle"}</span>
-                </div>
-              </div>
+                <div className="center-tools clean-center">
+                  <div className="indicator-tile">
+                    <span>Gösterge</span>
+                    <div className="tile yellow center-static-tile">2</div>
+                  </div>
 
-              <div className={`rack ${isMyTurn ? "rack-my-turn" : ""}`}>
-                <div className="rack-wood-top"></div>
-
-                <div className="rack-main">
-                  <div className="free-rack-board" ref={rackBoardRef}>
-                    <div className="rack-lane lane-top"></div>
-                    <div className="rack-lane lane-bottom"></div>
-                    {myHand.map((tile) => renderFreeTile(tile))}
+                  <div className="deck-back-box">
+                    <span>Kalan</span>
+                    <div className="deck-back-tile">{deckCount}</div>
                   </div>
                 </div>
 
-                <div className="rack-wood-bottom"></div>
+                <div
+                  className={`my-player-card ${
+                    currentTurnPlayerId === myPlayerId ? "active-turn" : ""
+                  }`}
+                >
+                  <div className="avatar">{me ? me.name[0] : "S"}</div>
+                  <div>
+                    <strong>{me ? me.name : "Sen"}</strong>
+                    <span className="player-subtitle">
+                      {isMyTurn ? "Sıra sende" : ""}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rack">
+                  <div className="rack-wood-top"></div>
+
+                  <div className="rack-main">
+                    <div className="free-rack-board" ref={rackBoardRef}>
+                      <div className="rack-lane lane-top"></div>
+                      <div className="rack-lane lane-bottom"></div>
+                      {myHand.map((tile) => renderFreeTile(tile))}
+                    </div>
+                  </div>
+
+                  <div className="rack-wood-bottom"></div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bottom-actions">
-            <button>Taş Çek</button>
-            <button className="secondary">Taş At</button>
-            <button className="start">101 Aç</button>
+            <div className="bottom-actions">
+              <button>Taş Çek</button>
+              <button className="secondary">Taş At</button>
+              <button className="start">101 Aç</button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
 
