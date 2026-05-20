@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import "./App.css";
 
-const socket = io("https://kanka-okey-server.onrender.com");
+const socket = io("https://kanka-okey-server.onrender.com", {
+  transports: ["websocket", "polling"],
+});
 
 function App() {
   const [name, setName] = useState("");
