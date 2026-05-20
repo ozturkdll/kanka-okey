@@ -14,14 +14,6 @@ const OPEN_ROWS = 12;
 const SERIES_COLS = 13;
 const PAIR_COLS = 2;
 
-const TILE_HEARTS = {
-  red: "♥",
-  blue: "♥",
-  black: "♥",
-  yellow: "♥",
-  fake: "★",
-};
-
 const styles = `
 * {
   box-sizing: border-box;
@@ -560,19 +552,10 @@ input:focus {
   font-size: 13px;
   font-weight: 900;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: inset 0 -2px 0 rgba(0,0,0,.13);
   cursor: pointer;
-  line-height: 0.88;
-  gap: 0;
-}
-
-.opened-tile small {
-  font-size: 6px;
-  line-height: 1;
-  font-weight: 900;
 }
 
 .opened-tile.red {
@@ -894,27 +877,16 @@ input:focus {
   border-radius: 7px;
   color: #020617;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
   font-size: 24px;
   font-weight: 900;
-  line-height: 0.85;
   cursor: grab;
   user-select: none;
   touch-action: none;
   box-shadow:
     inset 0 -4px 0 rgba(0, 0, 0, 0.13),
     0 5px 10px rgba(0, 0, 0, 0.22);
-}
-
-.tile small {
-  font-size: 10px;
-  line-height: 1;
-  font-weight: 900;
-  opacity: 0.95;
-  margin-top: 1px;
 }
 
 .free-rack-board .tile {
@@ -943,10 +915,6 @@ input:focus {
   width: 48px;
   height: 62px;
   font-size: 28px;
-}
-
-.center-static-tile small {
-  font-size: 11px;
 }
 
 .tile.red {
@@ -1171,10 +1139,6 @@ input:focus {
     font-size: 9px;
   }
 
-  .opened-tile small {
-    font-size: 5px;
-  }
-
   .top-left-discard-zone {
     left: 8px;
     top: 72px;
@@ -1256,10 +1220,6 @@ input:focus {
     width: 34px;
     height: 48px;
     font-size: 20px;
-  }
-
-  .tile small {
-    font-size: 8px;
   }
 
   .center-static-tile {
@@ -1649,27 +1609,9 @@ function App() {
     return effective.number;
   }
 
-  function getTileColorForHeart(tile) {
-    const effective = getEffectiveTile(tile);
-    return effective?.color || "black";
-  }
-
-  function getOpenedTileColorForHeart(entry) {
-    if (entry?.represents) return entry.represents.color;
-    return getTileColorForHeart(entry?.tile);
-  }
-
   function renderTileInner(tile) {
-    const color = getTileColorForHeart(tile);
-
     if (shouldShowTileBack(tile)) return null;
-
-    return (
-      <>
-        <span>{getTileText(tile)}</span>
-        <small>{TILE_HEARTS[color] || "♥"}</small>
-      </>
-    );
+    return <span>{getTileText(tile)}</span>;
   }
 
   function getRackWidth() {
@@ -2482,7 +2424,9 @@ function App() {
     return (
       <div
         key={tile.id}
-        className={`${getTileClass(tile)} ${draggingTile?.id === tile.id ? "dragging-tile" : ""}`}
+        className={`${getTileClass(tile)} ${
+          draggingTile?.id === tile.id ? "dragging-tile" : ""
+        }`}
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -2555,8 +2499,6 @@ function App() {
   }
 
   function renderOpenedTile(entry, group) {
-    const color = getOpenedTileColorForHeart(entry);
-
     return (
       <div
         className={getOpenedTileClass(entry)}
@@ -2573,7 +2515,6 @@ function App() {
         title={entry.represents ? "Okeyi almak için tıkla" : ""}
       >
         <span>{getOpenedTileText(entry)}</span>
-        <small>{TILE_HEARTS[color] || "♥"}</small>
       </div>
     );
   }
@@ -2866,7 +2807,6 @@ function App() {
                     {indicatorTile ? (
                       <div className={`tile ${indicatorTile.color} center-static-tile`}>
                         <span>{indicatorTile.number}</span>
-                        <small>{TILE_HEARTS[indicatorTile.color] || "♥"}</small>
                       </div>
                     ) : (
                       <div className="deck-back-tile">?</div>
