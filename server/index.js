@@ -31,6 +31,8 @@ const io = new Server(server, {
 
 const rooms = {};
 
+const TURN_SECONDS = 30;
+
 const INDICATOR_TILE = {
   color: "yellow",
   number: 2,
@@ -198,13 +200,33 @@ function publicPlayerList(players) {
   }));
 }
 
-function getPreviousTurnPlayerId(room, currentPlayerId) {
+function getCounterClockwiseNextPlayerId(room, currentPlayerId) {
   const currentIndex = room.players.findIndex((player) => player.id === currentPlayerId);
 
   if (currentIndex === -1) return room.players[0]?.id || null;
 
-  const previousIndex = (currentIndex - 1 + room.players.length) % room.players.length;
-  return room.players[previousIndex]?.id || null;
+  const nextIndex = (currentIndex - 1 + room.players.length) % room.players.length;
+  return room.players[nextIndex]?.id || null;
+}
+
+function clearTurnTimer(room) {
+  if (room?.game?.turnTimer) {
+    clearTimeout(room.game.turnTimer);
+    room.game.turnTimer = null;
+  }
+}
+
+function startTurnTimer(roomCode) {
+  const room = rooms[roomCode];
+  if (!room || !room.game) return;
+
+  clearTurnTimer(room);
+
+  room.game.turnDeadline = Date.now() + TURN_SECONDS * 1000;
+
+  room.game.turnTimer = setTimeout(() => {
+    handleTurnTimeout(roomCode);
+  }, TURN_SECONDS * 1000);
 }
 
 function broadcastGame(roomCode) {
@@ -220,13 +242,88 @@ function broadcastGame(roomCode) {
       deckCount: room.game.deck.length,
       currentTurnPlayerId: room.game.currentTurnPlayerId,
       turnPhase: room.game.turnPhase,
+      turnDeadline: room.game.turnDeadline,
+      turnSeconds: TURN_SECONDS,
       discardedTile: room.game.discardedTile,
       lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
+      discardPiles: room.game.discardPiles,
       openedSeries: room.game.openedSeries,
       openedPairs: room.game.openedPairs,
       indicatorTile: room.game.indicatorTile,
     });
   });
+}
+
+function drawTileForPlayer(room, playerId) {
+  if (!room.game.deck.length) return null;
+
+  const drawnTile = room.game.deck.shift();
+  room.game.hands[playerId].push(drawnTile);
+  room.game.lastDrawnTileByPlayerId[playerId] = drawnTile.id;
+
+  return drawnTile;
+}
+
+function discardTileForPlayer(room, playerId, tileId) {
+  const hand = room.game.hands[playerId];
+
+  if (!hand) return null;
+
+  let tileIndex = -1;
+
+  if (tileId) {
+    tileIndex = hand.findIndex((tile) => tile.id === tileId);
+  }
+
+  if (tileIndex === -1) {
+    const lastDrawnTileId = room.game.lastDrawnTileByPlayerId[playerId];
+
+    if (lastDrawnTileId) {
+      tileIndex = hand.findIndex((tile) => tile.id === lastDrawnTileId);
+    }
+  }
+
+  if (tileIndex === -1) {
+    tileIndex = hand.length - 1;
+  }
+
+  if (tileIndex === -1) return null;
+
+  const [discardedTile] = hand.splice(tileIndex, 1);
+
+  room.game.discardedTile = discardedTile;
+  room.game.lastDiscardedByPlayerId = playerId;
+  room.game.discardPiles[playerId] = discardedTile;
+  room.game.lastDrawnTileByPlayerId[playerId] = null;
+
+  return discardedTile;
+}
+
+function passTurn(roomCode, currentPlayerId) {
+  const room = rooms[roomCode];
+  if (!room || !room.game) return;
+
+  room.game.currentTurnPlayerId = getCounterClockwiseNextPlayerId(room, currentPlayerId);
+  room.game.turnPhase = "draw";
+  startTurnTimer(roomCode);
+  broadcastGame(roomCode);
+}
+
+function handleTurnTimeout(roomCode) {
+  const room = rooms[roomCode];
+  if (!room || !room.game) return;
+
+  const playerId = room.game.currentTurnPlayerId;
+
+  if (!playerId || !room.game.hands[playerId]) return;
+
+  if (room.game.turnPhase === "draw") {
+    drawTileForPlayer(room, playerId);
+    room.game.turnPhase = "discard";
+  }
+
+  discardTileForPlayer(room, playerId);
+  passTurn(roomCode, playerId);
 }
 
 function startGame(roomCode) {
@@ -247,8 +344,12 @@ function startGame(roomCode) {
     hands,
     currentTurnPlayerId: room.players[0].id,
     turnPhase: "discard",
+    turnDeadline: Date.now() + TURN_SECONDS * 1000,
+    turnTimer: null,
     discardedTile: null,
     lastDiscardedByPlayerId: null,
+    discardPiles: {},
+    lastDrawnTileByPlayerId: {},
     openedSeries: [],
     openedPairs: [],
     indicatorTile: INDICATOR_TILE,
@@ -263,13 +364,18 @@ function startGame(roomCode) {
       deckCount: room.game.deck.length,
       currentTurnPlayerId: room.game.currentTurnPlayerId,
       turnPhase: room.game.turnPhase,
+      turnDeadline: room.game.turnDeadline,
+      turnSeconds: TURN_SECONDS,
       discardedTile: room.game.discardedTile,
       lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
+      discardPiles: room.game.discardPiles,
       openedSeries: room.game.openedSeries,
       openedPairs: room.game.openedPairs,
       indicatorTile: room.game.indicatorTile,
     });
   });
+
+  startTurnTimer(roomCode);
 }
 
 function getRoomOrError(socket, roomCode) {
@@ -348,13 +454,8 @@ function openGroups(socket, roomCode, groups, mode) {
       return;
     }
 
-    if (mode === "series") {
-      totalSeriesScore += evaluation.score;
-    }
-
-    if (mode === "pairs") {
-      totalPairCount += 1;
-    }
+    if (mode === "series") totalSeriesScore += evaluation.score;
+    if (mode === "pairs") totalPairCount += 1;
 
     openedGroups.push({
       id: `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -485,10 +586,10 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const drawnTile = room.game.deck.shift();
-    room.game.hands[socket.id].push(drawnTile);
+    drawTileForPlayer(room, socket.id);
     room.game.turnPhase = "discard";
 
+    startTurnTimer(code);
     broadcastGame(code);
   });
 
@@ -516,28 +617,14 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const hand = room.game.hands[socket.id];
+    const discardedTile = discardTileForPlayer(room, socket.id, tileId);
 
-    if (!hand) {
-      socket.emit("error-message", "El bulunamadı.");
+    if (!discardedTile) {
+      socket.emit("error-message", "Atılacak taş bulunamadı.");
       return;
     }
 
-    const tileIndex = hand.findIndex((tile) => tile.id === tileId);
-
-    if (tileIndex === -1) {
-      socket.emit("error-message", "Bu taş sende yok.");
-      return;
-    }
-
-    const [discardedTile] = hand.splice(tileIndex, 1);
-
-    room.game.discardedTile = discardedTile;
-    room.game.lastDiscardedByPlayerId = socket.id;
-    room.game.currentTurnPlayerId = getPreviousTurnPlayerId(room, socket.id);
-    room.game.turnPhase = "draw";
-
-    broadcastGame(code);
+    passTurn(code, socket.id);
   });
 
   socket.on("disconnect", () => {
@@ -551,6 +638,7 @@ io.on("connection", (socket) => {
       });
 
       if (room.players.length === 0) {
+        clearTurnTimer(room);
         delete rooms[roomCode];
       }
     }

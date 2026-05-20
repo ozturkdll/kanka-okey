@@ -200,7 +200,8 @@ input:focus {
 
 .room-pill,
 .turn-pill,
-.mode-pill {
+.mode-pill,
+.timer-pill {
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
@@ -220,6 +221,18 @@ input:focus {
 
 .turn-pill.my-turn {
   background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.timer-pill {
+  min-width: 72px;
+  text-align: center;
+  font-weight: 900;
+  color: #facc15;
+}
+
+.timer-pill.danger {
+  background: linear-gradient(135deg, #ef4444, #991b1b);
   color: white;
 }
 
@@ -475,10 +488,6 @@ input:focus {
   display: grid;
   grid-template-rows: repeat(12, 1fr);
   min-height: 0;
-}
-
-.series-section,
-.pair-section {
   gap: 4px;
 }
 
@@ -603,7 +612,7 @@ input:focus {
   position: absolute;
   z-index: 42;
   right: 110px;
-  bottom: 194px;
+  bottom: 210px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1065,7 +1074,7 @@ input:focus {
 
   .center-tools {
     right: 60px;
-    bottom: 206px;
+    bottom: 222px;
     gap: 6px;
   }
 
@@ -1140,8 +1149,13 @@ function App() {
   const [deckCount, setDeckCount] = useState(0);
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState("");
   const [turnPhase, setTurnPhase] = useState("draw");
+  const [turnDeadline, setTurnDeadline] = useState(null);
+  const [turnSeconds, setTurnSeconds] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(30);
+
   const [discardedTile, setDiscardedTile] = useState(null);
   const [lastDiscardedByPlayerId, setLastDiscardedByPlayerId] = useState(null);
+  const [discardPiles, setDiscardPiles] = useState({});
   const [openedSeries, setOpenedSeries] = useState([]);
   const [openedPairs, setOpenedPairs] = useState([]);
 
@@ -1178,40 +1192,14 @@ function App() {
     });
 
     socket.on("game-started", (data) => {
+      applyGameData(data);
       setGameStarted(true);
-      setRoomCode(data.roomCode);
-      setPlayers(data.players);
-      setMyPlayerId(data.myPlayerId);
-      setMyHand(data.myHand || []);
-      setDeckCount(data.deckCount || 0);
-      setCurrentTurnPlayerId(data.currentTurnPlayerId);
-      setTurnPhase(data.turnPhase || "draw");
-      setDiscardedTile(data.discardedTile || null);
-      setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
-      setOpenedSeries(data.openedSeries || []);
-      setOpenedPairs(data.openedPairs || []);
       setTilePositions(createInitialTilePositions(data.myHand || []));
-      setDraggingTile(null);
-      setIsOverMyDiscard(false);
-      pendingDiscardRef.current = null;
     });
 
     socket.on("game-updated", (data) => {
-      setRoomCode(data.roomCode);
-      setPlayers(data.players);
-      setMyPlayerId(data.myPlayerId);
-      setMyHand(data.myHand || []);
-      setDeckCount(data.deckCount || 0);
-      setCurrentTurnPlayerId(data.currentTurnPlayerId);
-      setTurnPhase(data.turnPhase || "draw");
-      setDiscardedTile(data.discardedTile || null);
-      setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
-      setOpenedSeries(data.openedSeries || []);
-      setOpenedPairs(data.openedPairs || []);
+      applyGameData(data);
       setTilePositions((prev) => reconcileTilePositions(data.myHand || [], prev));
-      setDraggingTile(null);
-      setIsOverMyDiscard(false);
-      pendingDiscardRef.current = null;
     });
 
     socket.on("error-message", (message) => {
@@ -1233,6 +1221,7 @@ function App() {
 
         setDiscardedTile(pending.previousDiscardedTile);
         setLastDiscardedByPlayerId(pending.previousLastDiscardedByPlayerId);
+        setDiscardPiles(pending.previousDiscardPiles || {});
         pendingDiscardRef.current = null;
       }
     });
@@ -1247,6 +1236,43 @@ function App() {
       socket.off("error-message");
     };
   }, []);
+
+  useEffect(() => {
+    if (!turnDeadline) {
+      setTimeLeft(turnSeconds || 30);
+      return;
+    }
+
+    function updateTimer() {
+      const next = Math.max(0, Math.ceil((turnDeadline - Date.now()) / 1000));
+      setTimeLeft(next);
+    }
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 250);
+
+    return () => clearInterval(timer);
+  }, [turnDeadline, turnSeconds]);
+
+  function applyGameData(data) {
+    setRoomCode(data.roomCode);
+    setPlayers(data.players || []);
+    setMyPlayerId(data.myPlayerId);
+    setMyHand(data.myHand || []);
+    setDeckCount(data.deckCount || 0);
+    setCurrentTurnPlayerId(data.currentTurnPlayerId);
+    setTurnPhase(data.turnPhase || "draw");
+    setTurnDeadline(data.turnDeadline || null);
+    setTurnSeconds(data.turnSeconds || 30);
+    setDiscardedTile(data.discardedTile || null);
+    setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
+    setDiscardPiles(data.discardPiles || {});
+    setOpenedSeries(data.openedSeries || []);
+    setOpenedPairs(data.openedPairs || []);
+    setDraggingTile(null);
+    setIsOverMyDiscard(false);
+    pendingDiscardRef.current = null;
+  }
 
   function getOkeyNumber() {
     return INDICATOR_TILE.number === 13 ? 1 : INDICATOR_TILE.number + 1;
@@ -1638,16 +1664,22 @@ function App() {
       const previousPosition = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
       const previousDiscardedTile = discardedTile;
       const previousLastDiscardedByPlayerId = lastDiscardedByPlayerId;
+      const previousDiscardPiles = discardPiles;
 
       pendingDiscardRef.current = {
         tile,
         position: previousPosition,
         previousDiscardedTile,
         previousLastDiscardedByPlayerId,
+        previousDiscardPiles,
       };
 
       setDiscardedTile(tile);
       setLastDiscardedByPlayerId(myPlayerId);
+      setDiscardPiles((prev) => ({
+        ...prev,
+        [myPlayerId]: tile,
+      }));
       setMyHand((prev) => prev.filter((handTile) => handTile.id !== tile.id));
       setTilePositions((prev) => {
         const next = { ...prev };
@@ -2213,24 +2245,6 @@ function App() {
     );
   }
 
-  function renderDiscardZoneForPlayer(playerId, className, label = "Atılan") {
-    const shouldShowTile =
-      discardedTile && playerId && playerId === lastDiscardedByPlayerId;
-
-    return (
-      <div className={`table-discard-zone ${className}`}>
-        <span>{label}</span>
-        {shouldShowTile ? (
-          <div className={getTileClass(discardedTile)}>
-            {getTileText(discardedTile)}
-          </div>
-        ) : (
-          <div className="empty-discard-slot"></div>
-        )}
-      </div>
-    );
-  }
-
   function getPlayerPrestige(player) {
     if (!player) return 0;
 
@@ -2245,6 +2259,21 @@ function App() {
 
     const index = players.findIndex((p) => p.id === player.id);
     return 200 + (index + 1) * 17;
+  }
+
+  function renderDiscardZoneForPlayer(playerId, className, label = "Atılan") {
+    const pileTile = playerId ? discardPiles[playerId] : null;
+
+    return (
+      <div className={`table-discard-zone ${className}`}>
+        <span>{label}</span>
+        {pileTile ? (
+          <div className={getTileClass(pileTile)}>{getTileText(pileTile)}</div>
+        ) : (
+          <div className="empty-discard-slot"></div>
+        )}
+      </div>
+    );
   }
 
   function renderOpenedTile(tile) {
@@ -2405,6 +2434,10 @@ function App() {
                 / {turnPhase === "draw" ? "Taş çek" : "Taş at"}
               </div>
 
+              <div className={`timer-pill ${timeLeft <= 5 ? "danger" : ""}`}>
+                {timeLeft}s
+              </div>
+
               <div className="mode-pill">Katlamasız</div>
             </div>
 
@@ -2468,9 +2501,9 @@ function App() {
                   }`}
                 >
                   <span>TAŞ AT</span>
-                  {discardedTile && lastDiscardedByPlayerId === myPlayerId ? (
-                    <div className={getTileClass(discardedTile)}>
-                      {getTileText(discardedTile)}
+                  {discardPiles[myPlayerId] ? (
+                    <div className={getTileClass(discardPiles[myPlayerId])}>
+                      {getTileText(discardPiles[myPlayerId])}
                     </div>
                   ) : (
                     <div className="empty-discard-slot"></div>
