@@ -490,6 +490,7 @@ input:focus {
   grid-template-columns: repeat(13, 1fr);
   gap: 3px;
   min-height: 0;
+  position: relative;
 }
 
 .pair-row {
@@ -497,6 +498,7 @@ input:focus {
   grid-template-columns: repeat(2, 1fr);
   gap: 3px;
   min-height: 0;
+  position: relative;
 }
 
 .series-cell,
@@ -532,6 +534,50 @@ input:focus {
   transform: translateX(-50%);
   z-index: 2;
   white-space: nowrap;
+}
+
+.opened-tile {
+  width: 18px;
+  height: 23px;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #020617;
+  border: 1px solid #e2e8f0;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.13);
+}
+
+.opened-tile.red {
+  color: #dc2626;
+}
+
+.opened-tile.blue {
+  color: #2563eb;
+}
+
+.opened-tile.black {
+  color: #020617;
+}
+
+.opened-tile.yellow {
+  color: #ca8a04;
+}
+
+.opened-tile.fake {
+  color: #7c3aed;
+  border-color: #a855f7;
+}
+
+.opened-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 23px;
+  overflow: hidden;
 }
 
 .hand-summary-box {
@@ -696,16 +742,27 @@ input:focus {
   width: 100%;
   padding: 8px 7px;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e2e8f0;
+  color: white;
   font-size: 11px;
   line-height: 1.15;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
 }
 
+.left-action-stack button.green {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+}
+
+.left-action-stack button.orange {
+  background: linear-gradient(135deg, #f97316, #c2410c);
+}
+
+.left-action-stack button.yellow {
+  background: linear-gradient(135deg, #facc15, #ca8a04);
+  color: #422006;
+}
+
 .left-action-stack button:hover {
-  background: rgba(30, 41, 59, 0.96);
+  filter: brightness(1.08);
 }
 
 .rack {
@@ -864,7 +921,7 @@ input:focus {
 }
 
 .bottom-actions {
-  display: none;
+  display: flex;
   gap: 10px;
   margin-top: 12px;
 }
@@ -883,6 +940,11 @@ input:focus {
 
 .bottom-actions button.start {
   background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.bottom-actions button.disabled-action {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {
@@ -980,6 +1042,12 @@ input:focus {
     border-radius: 3px;
   }
 
+  .opened-tile {
+    width: 13px;
+    height: 18px;
+    font-size: 8px;
+  }
+
   .top-left-discard-zone {
     left: 8px;
     top: 72px;
@@ -1072,10 +1140,6 @@ input:focus {
     width: 42px;
     height: 56px;
   }
-
-  .bottom-actions {
-    display: flex;
-  }
 }
 `;
 
@@ -1092,8 +1156,11 @@ function App() {
   const [myHand, setMyHand] = useState([]);
   const [deckCount, setDeckCount] = useState(0);
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState("");
+  const [turnPhase, setTurnPhase] = useState("draw");
   const [discardedTile, setDiscardedTile] = useState(null);
   const [lastDiscardedByPlayerId, setLastDiscardedByPlayerId] = useState(null);
+  const [openedSeries, setOpenedSeries] = useState([]);
+  const [openedPairs, setOpenedPairs] = useState([]);
 
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
@@ -1132,34 +1199,33 @@ function App() {
       setRoomCode(data.roomCode);
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
-      setMyHand(data.myHand);
-      setDeckCount(data.deckCount);
+      setMyHand(data.myHand || []);
+      setDeckCount(data.deckCount || 0);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
-      setDiscardedTile(data.discardedTile);
+      setTurnPhase(data.turnPhase || "draw");
+      setDiscardedTile(data.discardedTile || null);
       setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
-      setTilePositions(createInitialTilePositions(data.myHand));
+      setOpenedSeries(data.openedSeries || []);
+      setOpenedPairs(data.openedPairs || []);
+      setTilePositions(createInitialTilePositions(data.myHand || []));
       setDraggingTile(null);
       setIsOverMyDiscard(false);
       pendingDiscardRef.current = null;
     });
 
     socket.on("game-updated", (data) => {
-      const inferredLastDiscardedBy = getPreviousPlayerIdFromList(
-        data.players,
-        data.currentTurnPlayerId
-      );
-
       setRoomCode(data.roomCode);
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
-      setMyHand(data.myHand);
-      setDeckCount(data.deckCount);
+      setMyHand(data.myHand || []);
+      setDeckCount(data.deckCount || 0);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
-      setDiscardedTile(data.discardedTile);
-      setLastDiscardedByPlayerId(
-        data.lastDiscardedByPlayerId || inferredLastDiscardedBy
-      );
-      setTilePositions((prev) => reconcileTilePositions(data.myHand, prev));
+      setTurnPhase(data.turnPhase || "draw");
+      setDiscardedTile(data.discardedTile || null);
+      setLastDiscardedByPlayerId(data.lastDiscardedByPlayerId || null);
+      setOpenedSeries(data.openedSeries || []);
+      setOpenedPairs(data.openedPairs || []);
+      setTilePositions((prev) => reconcileTilePositions(data.myHand || [], prev));
       setDraggingTile(null);
       setIsOverMyDiscard(false);
       pendingDiscardRef.current = null;
@@ -1323,11 +1389,31 @@ function App() {
     alert("Oda kodu kopyalandı.");
   }
 
+  function drawTile() {
+    if (currentTurnPlayerId !== myPlayerId) {
+      alert("Sıra sende değil.");
+      return;
+    }
+
+    if (turnPhase !== "draw") {
+      alert("Şu an taş çekemezsin. Önce taş atman gerekiyor.");
+      return;
+    }
+
+    socket.emit("draw-tile", { roomCode });
+  }
+
   function getTileClass(tile) {
     if (!tile) return "tile";
     if (shouldShowTileBack(tile)) return "tile back-tile";
     if (tile.fake) return "tile fake";
     return `tile ${tile.color}`;
+  }
+
+  function getOpenedTileClass(tile) {
+    if (!tile) return "opened-tile";
+    if (tile.fake) return "opened-tile fake";
+    return `opened-tile ${tile.color}`;
   }
 
   function getTileText(tile) {
@@ -1468,16 +1554,6 @@ function App() {
     return clamp(targetSlot, 0, maxSlot);
   }
 
-  function getPreviousPlayerIdFromList(playerList, currentId) {
-    if (!playerList || playerList.length === 0 || !currentId) return null;
-
-    const currentIndex = playerList.findIndex((player) => player.id === currentId);
-    if (currentIndex === -1) return null;
-
-    const previousIndex = (currentIndex - 1 + playerList.length) % playerList.length;
-    return playerList[previousIndex]?.id || null;
-  }
-
   function isPointerOverMyDiscardZone(e, draggedElement) {
     draggedElement.style.pointerEvents = "none";
     const elementUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
@@ -1562,6 +1638,14 @@ function App() {
     if (overDiscard) {
       if (currentTurnPlayerId !== myPlayerId) {
         alert("Sıra sende değil.");
+        snapTileToRack(tile.id);
+        setDraggingTile(null);
+        setIsOverMyDiscard(false);
+        return;
+      }
+
+      if (turnPhase !== "discard") {
+        alert("Önce taş çekmelisin.");
         snapTileToRack(tile.id);
         setDraggingTile(null);
         setIsOverMyDiscard(false);
@@ -2065,6 +2149,48 @@ function App() {
     applyLayoutWithGroups(groups);
   }
 
+  function handleOpenSeries() {
+    if (currentTurnPlayerId !== myPlayerId) {
+      alert("Sıra sende değil.");
+      return;
+    }
+
+    const validGroups = getManualGroupsFromRack()
+      .filter((group) => evaluateGroup(group).type === "series")
+      .map((group) => group.map((tile) => tile.id));
+
+    if (!validGroups.length) {
+      alert("Açılacak geçerli seri yok. Önce ıstakada perleri yan yana diz.");
+      return;
+    }
+
+    socket.emit("open-series", {
+      roomCode,
+      groups: validGroups,
+    });
+  }
+
+  function handleOpenPairs() {
+    if (currentTurnPlayerId !== myPlayerId) {
+      alert("Sıra sende değil.");
+      return;
+    }
+
+    const validGroups = getManualGroupsFromRack()
+      .filter((group) => evaluateGroup(group).type === "pair")
+      .map((group) => group.map((tile) => tile.id));
+
+    if (!validGroups.length) {
+      alert("Açılacak geçerli çift yok. Önce çiftleri yan yana diz.");
+      return;
+    }
+
+    socket.emit("open-pairs", {
+      roomCode,
+      groups: validGroups,
+    });
+  }
+
   function renderFreeTile(tile) {
     const position = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
 
@@ -2123,14 +2249,38 @@ function App() {
     return 200 + (index + 1) * 17;
   }
 
+  function renderOpenedTile(tile) {
+    return (
+      <div className={getOpenedTileClass(tile)} key={tile.id}>
+        {tile.fake ? "S" : tile.number}
+      </div>
+    );
+  }
+
+  function renderOpenedGroup(group) {
+    return (
+      <div className="opened-group" key={group.id}>
+        {(group.tiles || []).map((tile) => renderOpenedTile(tile))}
+      </div>
+    );
+  }
+
   function renderSeriesSection(sectionIndex) {
+    const start = sectionIndex === 1 ? 0 : OPEN_ROWS;
+    const sectionGroups = openedSeries.slice(start, start + OPEN_ROWS);
+
     return (
       <div className="series-section" key={sectionIndex}>
         {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
           <div className="series-row" key={`${sectionIndex}-${rowIndex}`}>
             {Array.from({ length: SERIES_COLS }).map((__, colIndex) => (
-              <div className="series-cell" key={`${sectionIndex}-${rowIndex}-${colIndex}`}></div>
+              <div
+                className="series-cell"
+                key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+              ></div>
             ))}
+
+            {sectionGroups[rowIndex] && renderOpenedGroup(sectionGroups[rowIndex])}
           </div>
         ))}
       </div>
@@ -2138,13 +2288,21 @@ function App() {
   }
 
   function renderPairSection(sectionIndex) {
+    const start = sectionIndex === 1 ? 0 : OPEN_ROWS;
+    const sectionGroups = openedPairs.slice(start, start + OPEN_ROWS);
+
     return (
       <div className="pair-section" key={sectionIndex}>
         {Array.from({ length: OPEN_ROWS }).map((_, rowIndex) => (
           <div className="pair-row" key={`${sectionIndex}-${rowIndex}`}>
             {Array.from({ length: PAIR_COLS }).map((__, colIndex) => (
-              <div className="pair-cell" key={`${sectionIndex}-${rowIndex}-${colIndex}`}></div>
+              <div
+                className="pair-cell"
+                key={`${sectionIndex}-${rowIndex}-${colIndex}`}
+              ></div>
             ))}
+
+            {sectionGroups[rowIndex] && renderOpenedGroup(sectionGroups[rowIndex])}
           </div>
         ))}
       </div>
@@ -2238,7 +2396,8 @@ function App() {
               </div>
 
               <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
-                Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}
+                Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}{" "}
+                / {turnPhase === "draw" ? "Taş çek" : "Taş at"}
               </div>
 
               <div className="mode-pill">Katlamasız</div>
@@ -2357,10 +2516,21 @@ function App() {
                 </div>
 
                 <div className="left-action-stack">
-                  <button onClick={() => handleArrange("run")}>Sıralı Diz</button>
-                  <button onClick={() => handleArrange("pair")}>Çift Diz</button>
-                  <button onClick={() => handleArrange("doubleTiles")}>Çift Taş</button>
-                  <button onClick={() => handleArrange("collect")}>Geri Topla</button>
+                  <button className="green" onClick={() => handleArrange("run")}>
+                    Seri Diz
+                  </button>
+                  <button className="green" onClick={() => handleArrange("pair")}>
+                    Çift Diz
+                  </button>
+                  <button className="orange" onClick={handleOpenSeries}>
+                    Seri Aç
+                  </button>
+                  <button className="orange" onClick={handleOpenPairs}>
+                    Çift Aç
+                  </button>
+                  <button className="yellow" onClick={() => handleArrange("collect")}>
+                    Geri Topla
+                  </button>
                 </div>
 
                 <div className="rack">
@@ -2380,8 +2550,13 @@ function App() {
             </div>
 
             <div className="bottom-actions">
-              <button>Taş Çek</button>
-              <button className="secondary">Taş At</button>
+              <button
+                onClick={drawTile}
+                className={!isMyTurn || turnPhase !== "draw" ? "disabled-action" : ""}
+              >
+                Taş Çek
+              </button>
+              <button className="secondary">Yerden Al</button>
               <button className="start">101 Aç</button>
             </div>
           </div>

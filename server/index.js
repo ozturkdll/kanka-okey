@@ -133,6 +133,7 @@ function evaluateGroup(group) {
           { length: group.length },
           (_, index) => start + index
         );
+
         const usedIds = new Set();
         let missing = 0;
 
@@ -163,8 +164,16 @@ function evaluateGroup(group) {
       let valid = true;
 
       normalTiles.forEach((tile) => {
-        if (tile.number !== number) valid = false;
-        if (usedColors.has(tile.color)) valid = false;
+        if (tile.number !== number) {
+          valid = false;
+          return;
+        }
+
+        if (usedColors.has(tile.color)) {
+          valid = false;
+          return;
+        }
+
         usedColors.add(tile.color);
       });
 
@@ -189,6 +198,15 @@ function publicPlayerList(players) {
   }));
 }
 
+function getPreviousTurnPlayerId(room, currentPlayerId) {
+  const currentIndex = room.players.findIndex((player) => player.id === currentPlayerId);
+
+  if (currentIndex === -1) return room.players[0]?.id || null;
+
+  const previousIndex = (currentIndex - 1 + room.players.length) % room.players.length;
+  return room.players[previousIndex]?.id || null;
+}
+
 function broadcastGame(roomCode) {
   const room = rooms[roomCode];
   if (!room || !room.game) return;
@@ -201,6 +219,7 @@ function broadcastGame(roomCode) {
       myHand: room.game.hands[player.id] || [],
       deckCount: room.game.deck.length,
       currentTurnPlayerId: room.game.currentTurnPlayerId,
+      turnPhase: room.game.turnPhase,
       discardedTile: room.game.discardedTile,
       lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
       openedSeries: room.game.openedSeries,
@@ -227,6 +246,7 @@ function startGame(roomCode) {
     deck: tiles,
     hands,
     currentTurnPlayerId: room.players[0].id,
+    turnPhase: "discard",
     discardedTile: null,
     lastDiscardedByPlayerId: null,
     openedSeries: [],
@@ -242,6 +262,7 @@ function startGame(roomCode) {
       myHand: hands[player.id],
       deckCount: room.game.deck.length,
       currentTurnPlayerId: room.game.currentTurnPlayerId,
+      turnPhase: room.game.turnPhase,
       discardedTile: room.game.discardedTile,
       lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
       openedSeries: room.game.openedSeries,
@@ -280,6 +301,7 @@ function openGroups(socket, roomCode, groups, mode) {
   }
 
   const hand = room.game.hands[socket.id];
+
   if (!hand) {
     socket.emit("error-message", "El bulunamadı.");
     return;
@@ -421,19 +443,32 @@ io.on("connection", (socket) => {
     startGame(code);
   });
 
-  socket.on("reorder-hand", ({ roomCode, orderedTileIds }) => {
+  socket.on("draw-tile", ({ roomCode }) => {
     const result = getRoomOrError(socket, roomCode);
     if (!result) return;
 
-    const hand = result.room.game.hands[socket.id];
-    if (!hand || !Array.isArray(orderedTileIds)) return;
+    const { room, code } = result;
 
-    const tileMap = new Map(hand.map((tile) => [tile.id, tile]));
-    const reorderedHand = orderedTileIds.map((id) => tileMap.get(id)).filter(Boolean);
-
-    if (reorderedHand.length === hand.length) {
-      result.room.game.hands[socket.id] = reorderedHand;
+    if (room.game.currentTurnPlayerId !== socket.id) {
+      socket.emit("error-message", "Sıra sende değil.");
+      return;
     }
+
+    if (room.game.turnPhase !== "draw") {
+      socket.emit("error-message", "Şu an taş çekemezsin. Taş atman gerekiyor.");
+      return;
+    }
+
+    if (room.game.deck.length === 0) {
+      socket.emit("error-message", "Destede taş kalmadı.");
+      return;
+    }
+
+    const drawnTile = room.game.deck.shift();
+    room.game.hands[socket.id].push(drawnTile);
+    room.game.turnPhase = "discard";
+
+    broadcastGame(code);
   });
 
   socket.on("open-series", ({ roomCode, groups }) => {
@@ -455,6 +490,11 @@ io.on("connection", (socket) => {
       return;
     }
 
+    if (room.game.turnPhase !== "discard") {
+      socket.emit("error-message", "Önce taş çekmelisin.");
+      return;
+    }
+
     const hand = room.game.hands[socket.id];
 
     if (!hand) {
@@ -473,10 +513,8 @@ io.on("connection", (socket) => {
 
     room.game.discardedTile = discardedTile;
     room.game.lastDiscardedByPlayerId = socket.id;
-
-    const currentIndex = room.players.findIndex((player) => player.id === socket.id);
-    const nextIndex = (currentIndex + 1) % room.players.length;
-    room.game.currentTurnPlayerId = room.players[nextIndex].id;
+    room.game.currentTurnPlayerId = getPreviousTurnPlayerId(room, socket.id);
+    room.game.turnPhase = "draw";
 
     broadcastGame(code);
   });
