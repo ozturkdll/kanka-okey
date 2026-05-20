@@ -629,9 +629,7 @@ function discardTileForPlayer(room, playerId, tileId) {
   }
 
   if (tileIndex === -1) {
-    const lastDrawnTileId = room.game.lastDrawnTileByPlayerId
-      ? room.game.lastDrawnTileByPlayerId[playerId]
-      : null;
+    const lastDrawnTileId = room.game.lastDrawnTileByPlayerId[playerId];
 
     if (lastDrawnTileId) {
       tileIndex = hand.findIndex((tile) => Number(tile.id) === Number(lastDrawnTileId));
@@ -646,27 +644,22 @@ function discardTileForPlayer(room, playerId, tileId) {
 
   const tile = hand[tileIndex];
 
-  const playerOpened = Boolean(
-    room.game.playerOpenTypes &&
-    room.game.playerOpenTypes[playerId]
-  );
-
-  if (playerOpened && __isUsefulDiscardTile(room, tile)) {
-    __addIslekPenalty(room, playerId, tile);
+  if (room.game.playerOpenTypes[playerId] && isTileUsefulForAnyOpenGroup(room, tile)) {
+    room.totalScores[playerId] = (room.totalScores[playerId] || 0) + 101;
+    room.game.penaltyMessages.push({
+      playerId,
+      amount: 101,
+      reason: "İşlek taş attı.",
+      tile,
+      createdAt: Date.now(),
+    });
   }
 
-  const discardedTile = hand.splice(tileIndex, 1)[0];
+  const [discardedTile] = hand.splice(tileIndex, 1);
 
-  if (!room.game.discardPiles) room.game.discardPiles = {};
   room.game.discardPiles[playerId] = discardedTile;
-
-  if (room.game.lastDrawnTileByPlayerId) {
-    room.game.lastDrawnTileByPlayerId[playerId] = null;
-  }
-
-  if (room.game.drawSourceByPlayerId) {
-    room.game.drawSourceByPlayerId[playerId] = null;
-  }
+  room.game.lastDrawnTileByPlayerId[playerId] = null;
+  room.game.drawSourceByPlayerId[playerId] = null;
 
   return discardedTile;
 }
@@ -1625,79 +1618,25 @@ function __isUsefulDiscardTile(room, tile) {
   return usefulForSeries || usefulForPairs;
 }
 
-function __findRoomCodeForPenalty(room) {
-  if (!room) return null;
-
-  if (room.roomCode) return room.roomCode;
-  if (room.code) return room.code;
-  if (room.id) return room.id;
-
-  if (typeof rooms !== "undefined") {
-    if (rooms instanceof Map) {
-      for (const [code, candidateRoom] of rooms.entries()) {
-        if (candidateRoom === room) return code;
-      }
-    } else {
-      for (const [code, candidateRoom] of Object.entries(rooms)) {
-        if (candidateRoom === room) return code;
-      }
-    }
-  }
-
-  return null;
-}
-
-function __getPlayerNameForPenalty(room, playerId) {
-  const players = room && Array.isArray(room.players) ? room.players : [];
-  const player = players.find((item) => {
-    return item.id === playerId || item.socketId === playerId;
-  });
-
-  return player && player.name ? player.name : "Bir oyuncu";
-}
-
 function __addInstantPenalty(room, playerId, amount, reason, tile) {
   if (!room.totalScores) room.totalScores = {};
-  if (!room.game) room.game = {};
   if (!room.game.penaltyMessages) room.game.penaltyMessages = [];
 
   room.totalScores[playerId] = (room.totalScores[playerId] || 0) + amount;
 
-  const playerName = __getPlayerNameForPenalty(room, playerId);
-  const cleanReason = reason || "Ceza";
-  const tableMessage = playerName + " " + cleanReason.toLowerCase() + " için " + amount + " ceza yedi.";
-
-  const penalty = {
+  room.game.penaltyMessages.push({
     playerId,
-    playerName,
     amount,
-    reason: cleanReason,
-    message: tableMessage,
+    reason,
     tile,
     createdAt: Date.now(),
-  };
-
-  room.game.penaltyMessages.push(penalty);
-
-  const roomCode = __findRoomCodeForPenalty(room);
+  });
 
   if (typeof io !== "undefined") {
-    if (roomCode) {
-      io.to(roomCode).emit("table-message", {
-        type: "penalty",
-        message: tableMessage,
-        playerId,
-        playerName,
-        amount,
-        reason: cleanReason,
-        tile,
-      });
-    }
-
     io.to(playerId).emit("penalty-message", {
-      message: tableMessage,
+      message: reason + " +" + amount + " ceza yedin.",
       amount,
-      reason: cleanReason,
+      reason,
       tile,
       totalScore: room.totalScores[playerId],
     });
