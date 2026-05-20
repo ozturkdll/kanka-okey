@@ -415,130 +415,131 @@ input:focus {
   align-items: flex-start;
 }
 
+/* ORTA AÇMA ALANI */
 .open-area {
   position: absolute;
   left: 104px;
   right: 104px;
-  top: 88px;
-  bottom: 285px;
+  top: 84px;
+  bottom: 286px;
   z-index: 5;
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .open-area-main,
 .open-area-pairs {
-  height: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px),
-    rgba(2, 6, 23, 0.06);
-  background-size: 24px 24px;
-  box-shadow:
-    inset 0 0 35px rgba(255, 255, 255, 0.02),
-    0 0 16px rgba(255, 255, 255, 0.035);
-  border-radius: 8px;
   position: relative;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(214, 228, 240, 0.65);
+  background:
+    linear-gradient(rgba(164, 185, 203, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(164, 185, 203, 0.18) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(32, 54, 74, 0.96), rgba(27, 48, 67, 0.96));
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+  box-shadow:
+    inset 0 0 24px rgba(255, 255, 255, 0.025),
+    0 0 12px rgba(0, 0, 0, 0.16);
 }
 
 .open-area-main {
   flex: 1;
-  padding: 30px 8px 8px;
+  min-width: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  min-width: 0;
+  gap: 3px;
+  padding: 4px;
 }
 
 .open-area-pairs {
-  width: 170px;
-  flex: 0 0 170px;
-  padding: 30px 6px 8px;
+  width: 178px;
+  flex: 0 0 178px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 3px;
+  padding: 4px;
 }
 
 .series-section,
 .pair-section {
   display: grid;
-  grid-template-rows: repeat(12, 1fr);
   min-height: 0;
-  gap: 4px;
+  gap: 2px;
+}
+
+.series-section {
+  grid-template-rows: repeat(12, 1fr);
+}
+
+.pair-section {
+  grid-template-rows: repeat(12, 1fr);
 }
 
 .series-row {
   display: grid;
   grid-template-columns: repeat(13, 1fr);
-  gap: 3px;
+  gap: 2px;
   min-height: 0;
 }
 
 .pair-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 3px;
+  gap: 2px;
   min-height: 0;
 }
 
 .series-cell,
 .pair-cell {
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.022);
-  box-shadow: inset 0 0 9px rgba(255, 255, 255, 0.012);
-  min-height: 10px;
+  min-height: 0;
+  border: 1px solid rgba(174, 195, 210, 0.28);
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 2px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
 }
 
 .series-cell.drop-target,
 .pair-cell.drop-target {
-  background: rgba(34, 197, 94, 0.17);
-  border-color: rgba(34, 197, 94, 0.8);
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.62);
 }
 
 .open-area-label,
 .open-area-right-label {
   position: absolute;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
   font-weight: 900;
-  background: rgba(2, 6, 23, 0.42);
+  background: rgba(2, 6, 23, 0.34);
   border-radius: 999px;
-  padding: 3px 8px;
-}
-
-.open-area-label {
-  left: 50%;
-  top: 7px;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-.open-area-right-label {
-  left: 50%;
-  top: 7px;
-  transform: translateX(-50%);
-  z-index: 2;
+  padding: 2px 8px;
   white-space: nowrap;
 }
 
 .opened-tile {
-  width: 19px;
-  height: 27px;
-  border-radius: 4px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
   background: #f8fafc;
   color: #020617;
-  border: 1px solid #e2e8f0;
-  font-size: 13px;
+  border: none;
+  font-size: 17px;
   font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.13);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.10);
   cursor: pointer;
 }
 
@@ -560,11 +561,12 @@ input:focus {
 
 .opened-tile.fake {
   color: #7c3aed;
-  border-color: #a855f7;
+  border: 1px solid #a855f7;
 }
 
 .opened-tile.joker-opened {
   outline: 2px solid #facc15;
+  outline-offset: -2px;
 }
 
 .hand-summary-box {
@@ -897,7 +899,19 @@ input:focus {
   cursor: default;
 }
 
-.table-discard-zone .tile span {\n  position: static !important;\n  transform: none !important;\n  color: inherit !important;\n  background: transparent !important;\n  padding: 0 !important;\n  border-radius: 0 !important;\n  font-size: inherit !important;\n  font-weight: 900 !important;\n}\n\n.center-static-tile {\n  position: static !important;
+.table-discard-zone .tile span {
+  position: static !important;
+  transform: none !important;
+  color: inherit !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: inherit !important;
+  font-weight: 900 !important;
+}
+
+.center-static-tile {
+  position: static !important;
   cursor: default !important;
   width: 42px;
   height: 54px;
@@ -1086,44 +1100,38 @@ input:focus {
     right: 82px;
     top: 78px;
     bottom: 305px;
-    gap: 6px;
+    gap: 4px;
   }
 
   .open-area-main {
-    padding: 30px 5px 5px;
-    gap: 6px;
+    gap: 2px;
+    padding: 3px;
   }
 
   .open-area-pairs {
     width: 126px;
     flex-basis: 126px;
-    padding: 30px 4px 5px;
-    gap: 4px;
+    gap: 2px;
+    padding: 3px;
   }
 
   .series-section,
   .pair-section {
-    gap: 3px;
+    gap: 1px;
   }
 
-  .series-row {
-    gap: 2px;
-  }
-
+  .series-row,
   .pair-row {
-    gap: 2px;
+    gap: 1px;
   }
 
   .series-cell,
   .pair-cell {
-    min-height: 8px;
-    border-radius: 3px;
+    border-radius: 1px;
   }
 
   .opened-tile {
-    width: 15px;
-    height: 21px;
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .top-left-discard-zone {
@@ -2411,9 +2419,7 @@ function App() {
     return (
       <div
         key={tile.id}
-        className={`${getTileClass(tile)} ${
-          draggingTile?.id === tile.id ? "dragging-tile" : ""
-        }`}
+        className={`${getTileClass(tile)} ${draggingTile?.id === tile.id ? "dragging-tile" : ""}`}
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
@@ -2682,9 +2688,7 @@ function App() {
 
                 {topPlayer && (
                   <div
-                    className={`player-badge top-player ${
-                      currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
-                    }`}
+                    className={`player-badge top-player ${currentTurnPlayerId === topPlayer.id ? "active-turn" : ""}`}
                     style={getTurnRingStyle(topPlayer.id)}
                   >
                     <div className="avatar">{topPlayer.name[0]}</div>
@@ -2696,9 +2700,7 @@ function App() {
 
                 {leftPlayer && (
                   <div
-                    className={`player-badge left-player ${
-                      currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
-                    }`}
+                    className={`player-badge left-player ${currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""}`}
                     style={getTurnRingStyle(leftPlayer.id)}
                   >
                     <div className="avatar">{leftPlayer.name[0]}</div>
@@ -2710,9 +2712,7 @@ function App() {
 
                 {rightPlayer && (
                   <div
-                    className={`player-badge right-player ${
-                      currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
-                    }`}
+                    className={`player-badge right-player ${currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""}`}
                     style={getTurnRingStyle(rightPlayer.id)}
                   >
                     <div className="avatar">{rightPlayer.name[0]}</div>
@@ -2729,9 +2729,7 @@ function App() {
                 })}
 
                 <div
-                  className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${
-                    isOverMyDiscard ? "discard-zone-hover" : ""
-                  }`}
+                  className={`table-discard-zone my-table-discard-zone bottom-right-discard-zone ${isOverMyDiscard ? "discard-zone-hover" : ""}`}
                 >
                   <span>TAŞ AT</span>
                   {discardPiles[myPlayerId] ? (
@@ -2792,9 +2790,7 @@ function App() {
                 </div>
 
                 <div
-                  className={`my-player-card ${
-                    currentTurnPlayerId === myPlayerId ? "active-turn" : ""
-                  }`}
+                  className={`my-player-card ${currentTurnPlayerId === myPlayerId ? "active-turn" : ""}`}
                   style={getTurnRingStyle(myPlayerId)}
                 >
                   <div className="avatar">{me ? me.name[0] : "S"}</div>
