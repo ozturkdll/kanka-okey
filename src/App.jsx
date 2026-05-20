@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
@@ -366,7 +366,7 @@ input:focus {
 
 .my-player-card {
   left: 50%;
-  bottom: 196px;
+  bottom: 208px;
   transform: translateX(-50%);
   min-width: 168px;
   justify-content: center;
@@ -399,11 +399,19 @@ input:focus {
 
 .open-area {
   position: absolute;
-  left: 108px;
-  right: 108px;
-  top: 92px;
-  bottom: 230px;
+  left: 104px;
+  right: 104px;
+  top: 88px;
+  bottom: 236px;
   z-index: 5;
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.open-area-main,
+.open-area-pairs {
+  height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background:
     linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
@@ -414,7 +422,26 @@ input:focus {
     inset 0 0 35px rgba(255, 255, 255, 0.02),
     0 0 16px rgba(255, 255, 255, 0.035);
   border-radius: 8px;
-  pointer-events: none;
+  position: relative;
+}
+
+.open-area-main {
+  flex: 7;
+}
+
+.open-area-pairs {
+  flex: 3;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+}
+
+.pair-slot {
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  position: relative;
 }
 
 .open-area-label {
@@ -429,13 +456,62 @@ input:focus {
   padding: 3px 8px;
 }
 
-/* CENTER TOOLS */
+.open-area-right-label {
+  left: 8px;
+  top: 8px;
+  position: absolute;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 900;
+  background: rgba(2, 6, 23, 0.42);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+/* HAND SUMMARY + CENTER TOOLS */
+
+.hand-summary-box {
+  position: absolute;
+  z-index: 42;
+  right: 270px;
+  bottom: 220px;
+  width: 92px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 8px 9px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+.hand-summary-title {
+  font-size: 10px;
+  color: #cbd5e1;
+  margin-bottom: 5px;
+  font-weight: 800;
+}
+
+.hand-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.hand-summary-row span:first-child {
+  color: #e2e8f0;
+}
+
+.hand-summary-row span:last-child {
+  color: #facc15;
+  font-weight: 900;
+}
 
 .center-tools {
   position: absolute;
   z-index: 42;
-  right: 120px;
-  bottom: 210px;
+  right: 110px;
+  bottom: 220px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -443,8 +519,8 @@ input:focus {
 
 .indicator-tile,
 .deck-back-box {
-  width: 64px;
-  height: 72px;
+  width: 62px;
+  height: 70px;
   border-radius: 12px;
   background: rgba(2, 6, 23, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -517,22 +593,22 @@ input:focus {
 
 .top-left-discard-zone {
   left: 116px;
-  top: 78px;
+  top: 68px;
 }
 
 .top-right-discard-zone {
   right: 116px;
-  top: 78px;
+  top: 68px;
 }
 
 .bottom-left-discard-zone {
   left: 116px;
-  bottom: 214px;
+  bottom: 224px;
 }
 
 .bottom-right-discard-zone {
-  right: 116px;
-  bottom: 214px;
+  right: 48px;
+  bottom: 224px;
 }
 
 .my-table-discard-zone {
@@ -776,7 +852,7 @@ input:focus {
   }
 
   .table-felt {
-    min-height: 670px;
+    min-height: 690px;
     border-radius: 18px;
   }
 
@@ -812,44 +888,56 @@ input:focus {
   .open-area {
     left: 82px;
     right: 82px;
-    top: 84px;
-    bottom: 232px;
+    top: 78px;
+    bottom: 240px;
+    gap: 8px;
   }
 
   .top-left-discard-zone {
     left: 82px;
-    top: 74px;
+    top: 66px;
   }
 
   .top-right-discard-zone {
     right: 82px;
-    top: 74px;
+    top: 66px;
   }
 
   .bottom-left-discard-zone {
     left: 82px;
-    bottom: 208px;
+    bottom: 218px;
   }
 
   .bottom-right-discard-zone {
-    right: 82px;
-    bottom: 208px;
+    right: 22px;
+    bottom: 218px;
+  }
+
+  .hand-summary-box {
+    right: 206px;
+    bottom: 214px;
+    width: 78px;
+    padding: 6px 7px;
+  }
+
+  .hand-summary-row {
+    font-size: 11px;
   }
 
   .center-tools {
-    right: 84px;
-    bottom: 202px;
+    right: 86px;
+    bottom: 214px;
   }
 
   .indicator-tile,
   .deck-back-box {
-    width: 58px;
-    height: 68px;
+    width: 56px;
+    height: 66px;
   }
 
   .my-player-card {
     left: 50%;
-    bottom: 190px;
+    bottom: 200px;
     padding: 7px;
     min-width: 144px;
   }
@@ -1181,12 +1269,9 @@ function App() {
 
       const occupyingTileId = occupied[row][slot];
 
-      if (!occupyingTileId) {
-        return true;
-      }
+      if (!occupyingTileId) return true;
 
       const canPush = pushRight(row, slot + 1);
-
       if (!canPush) return false;
 
       occupied[row][slot + 1] = occupyingTileId;
@@ -1205,12 +1290,9 @@ function App() {
 
       const occupyingTileId = occupied[row][slot];
 
-      if (!occupyingTileId) {
-        return true;
-      }
+      if (!occupyingTileId) return true;
 
       const canPush = pushLeft(row, slot - 1);
-
       if (!canPush) return false;
 
       occupied[row][slot - 1] = occupyingTileId;
@@ -1440,10 +1522,7 @@ function App() {
         const pa = tilePositions[a.id] || { x: 12, y: ROW_1_Y };
         const pb = tilePositions[b.id] || { x: 12, y: ROW_1_Y };
 
-        return (
-          closestRackRow(pa.y) - closestRackRow(pb.y) ||
-          pa.x - pb.x
-        );
+        return closestRackRow(pa.y) - closestRackRow(pb.y) || pa.x - pb.x;
       });
     }
 
@@ -1506,6 +1585,47 @@ function App() {
     const index = players.findIndex((p) => p.id === player.id);
     return 200 + (index + 1) * 17;
   }
+
+  const handSummary = useMemo(() => {
+    const byNumber = {};
+    const byColor = {};
+
+    myHand.forEach((tile) => {
+      if (typeof tile.number !== "number") return;
+
+      byNumber[tile.number] = (byNumber[tile.number] || 0) + 1;
+
+      if (!byColor[tile.color]) byColor[tile.color] = [];
+      byColor[tile.color].push(tile.number);
+    });
+
+    let pairCount = 0;
+    Object.values(byNumber).forEach((count) => {
+      pairCount += Math.floor(count / 2);
+    });
+
+    let runCount = 0;
+    Object.values(byColor).forEach((numbers) => {
+      const uniqueSorted = [...new Set(numbers)].sort((a, b) => a - b);
+      let streak = 1;
+
+      for (let i = 1; i < uniqueSorted.length; i++) {
+        if (uniqueSorted[i] === uniqueSorted[i - 1] + 1) {
+          streak++;
+        } else {
+          if (streak >= 3) runCount++;
+          streak = 1;
+        }
+      }
+
+      if (streak >= 3) runCount++;
+    });
+
+    return {
+      pairCount,
+      runCount,
+    };
+  }, [myHand]);
 
   const opponents = players.filter((player) => player.id !== myPlayerId);
   const currentTurnPlayer = players.find(
@@ -1664,7 +1784,27 @@ function App() {
                 </div>
 
                 <div className="open-area">
-                  <div className="open-area-label">Açılan Taş Alanı</div>
+                  <div className="open-area-main">
+                    <div className="open-area-label">Seri Açılan Alan</div>
+                  </div>
+
+                  <div className="open-area-pairs">
+                    <div className="open-area-right-label">Çifte Açılan</div>
+                    <div className="pair-slot"></div>
+                    <div className="pair-slot"></div>
+                  </div>
+                </div>
+
+                <div className="hand-summary-box">
+                  <div className="hand-summary-title">El Özeti</div>
+                  <div className="hand-summary-row">
+                    <span>Seri</span>
+                    <span>{handSummary.runCount}</span>
+                  </div>
+                  <div className="hand-summary-row">
+                    <span>Çift</span>
+                    <span>{handSummary.pairCount}</span>
+                  </div>
                 </div>
 
                 <div className="center-tools">
