@@ -1362,10 +1362,30 @@ io.on("connection", (socket) => {
   });
 
   socket.on("open-series", ({ roomCode, groups }) => {
+    const __roomForSeriesRule = rooms && roomCode ? rooms[roomCode] : null;
+    if (__roomForSeriesRule && __roomForSeriesRule.game && __roomForSeriesRule.game.playerOpenTypes) {
+      const __myOpenType = __roomForSeriesRule.game.playerOpenTypes[socket.id];
+
+      if (__myOpenType === "pairs") {
+        socket.emit("error-message", "Çift açan kişi seri açamaz. Sadece yerdeki serilere taş işleyebilirsin.");
+        return;
+      }
+    }
+
     openGroups(socket, roomCode, groups, "series");
   });
 
   socket.on("open-pairs", ({ roomCode, groups }) => {
+    const __roomForPairRule = rooms && roomCode ? rooms[roomCode] : null;
+    if (__roomForPairRule && __roomForPairRule.game && __roomForPairRule.game.playerOpenTypes) {
+      const __myOpenType = __roomForPairRule.game.playerOpenTypes[socket.id];
+
+      if (__myOpenType === "series" && !__someoneOpenedPairs(__roomForPairRule, socket.id)) {
+        socket.emit("error-message", "Birisi çift açmadan çift açamazsın.");
+        return;
+      }
+    }
+
     openGroups(socket, roomCode, groups, "pairs");
   });
 
@@ -1474,3 +1494,158 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Server ${PORT} portunda çalışıyor.`);
 });
+
+
+function __getTileValueForUsefulCheck(room, tile) {
+  if (!tile) return null;
+
+  const indicator = room?.game?.indicatorTile;
+  const okey = room?.game?.okeyTile;
+
+  if (tile.fake && okey) {
+    return {
+      color: okey.color,
+      number: okey.number,
+      fake: true,
+    };
+  }
+
+  if (okey && !tile.fake && tile.color === okey.color && tile.number === okey.number) {
+    return {
+      color: "__joker__",
+      number: "__joker__",
+      joker: true,
+    };
+  }
+
+  return {
+    color: tile.color,
+    number: tile.number,
+  };
+}
+
+function __getOpenedGroupEntriesForUsefulCheck(room, group) {
+  if (!group) return [];
+
+  const rawEntries = Array.isArray(group.layout)
+    ? group.layout
+    : Array.isArray(group.tiles)
+      ? group.tiles.map((tile, index) => ({ tile, slot: index + 1 }))
+      : [];
+
+  return rawEntries
+    .map((entry, index) => {
+      const tile = entry.tile || entry;
+      const value = entry.represents || __getTileValueForUsefulCheck(room, tile);
+
+      if (!value) return null;
+
+      return {
+        slot: Number(entry.slot || index + 1),
+        color: value.color,
+        number: value.number,
+        joker: value.joker,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.slot - b.slot);
+}
+
+function __isTileUsefulForSeriesGroup(room, tile, group) {
+  const tileValue = __getTileValueForUsefulCheck(room, tile);
+  if (!tileValue) return false;
+
+  const entries = __getOpenedGroupEntriesForUsefulCheck(room, group);
+  if (!entries.length) return false;
+
+  if (tileValue.joker) return true;
+
+  const nonJokerEntries = entries.filter((entry) => !entry.joker);
+
+  if (!nonJokerEntries.length) return true;
+
+  const sameColorEntries = nonJokerEntries.filter((entry) => entry.color === tileValue.color);
+  const sameNumberEntries = nonJokerEntries.filter((entry) => entry.number === tileValue.number);
+
+  const looksLikeRun = sameColorEntries.length >= 2;
+  const looksLikeSet = sameNumberEntries.length >= 2;
+
+  if (looksLikeRun) {
+    const numbers = sameColorEntries.map((entry) => Number(entry.number)).filter(Number.isFinite);
+    if (!numbers.length) return false;
+
+    const min = Math.min(...numbers);
+    const max = Math.max(...numbers);
+
+    return Number(tileValue.number) === min - 1 || Number(tileValue.number) === max + 1;
+  }
+
+  if (looksLikeSet) {
+    const usedColors = new Set(nonJokerEntries.map((entry) => entry.color));
+    return Number(tileValue.number) === Number(sameNumberEntries[0].number) && !usedColors.has(tileValue.color);
+  }
+
+  return false;
+}
+
+function __isTileUsefulForPairsGroup(room, tile, group) {
+  const tileValue = __getTileValueForUsefulCheck(room, tile);
+  if (!tileValue) return false;
+
+  if (tileValue.joker) return true;
+
+  const entries = __getOpenedGroupEntriesForUsefulCheck(room, group);
+  if (!entries.length) return false;
+
+  return entries.some((entry) => {
+    if (entry.joker) return true;
+    return entry.color === tileValue.color && Number(entry.number) === Number(tileValue.number);
+  });
+}
+
+function __isUsefulDiscardTile(room, tile) {
+  const seriesGroups = room?.game?.openedSeries || [];
+  const pairGroups = room?.game?.openedPairs || [];
+
+  const usefulForSeries = seriesGroups.some((group) =>
+    __isTileUsefulForSeriesGroup(room, tile, group)
+  );
+
+  const usefulForPairs = pairGroups.some((group) =>
+    __isTileUsefulForPairsGroup(room, tile, group)
+  );
+
+  return usefulForSeries || usefulForPairs;
+}
+
+function __addInstantPenalty(room, playerId, amount, reason, tile) {
+  if (!room.totalScores) room.totalScores = {};
+  if (!room.game.penaltyMessages) room.game.penaltyMessages = [];
+
+  room.totalScores[playerId] = (room.totalScores[playerId] || 0) + amount;
+
+  room.game.penaltyMessages.push({
+    playerId,
+    amount,
+    reason,
+    tile,
+    createdAt: Date.now(),
+  });
+
+  if (typeof io !== "undefined") {
+    io.to(playerId).emit("penalty-message", {
+      message: reason + " +" + amount + " ceza yedin.",
+      amount,
+      reason,
+      tile,
+      totalScore: room.totalScores[playerId],
+    });
+  }
+}
+
+function __someoneOpenedPairs(room, currentPlayerId) {
+  return Object.entries(room?.game?.playerOpenTypes || {}).some(([playerId, openType]) => {
+    return playerId !== currentPlayerId && openType === "pairs";
+  });
+}
+

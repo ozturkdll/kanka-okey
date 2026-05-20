@@ -420,28 +420,28 @@ input:focus {
   position: absolute;
   left: 104px;
   right: 104px;
-  top: 84px;
-  bottom: 286px;
+  top: 68px;
+  bottom: 258px;
   z-index: 5;
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .open-area-main,
 .open-area-pairs {
   position: relative;
   height: 100%;
-  border-radius: 6px;
+  border-radius: 7px;
   overflow: hidden;
-  border: 2px solid rgba(214, 228, 240, 0.65);
+  border: 2px solid rgba(214, 228, 240, 0.55);
   background:
-    linear-gradient(rgba(164, 185, 203, 0.18) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(164, 185, 203, 0.18) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 54, 74, 0.96), rgba(27, 48, 67, 0.96));
-  background-size: 24px 24px, 24px 24px, 100% 100%;
+    linear-gradient(rgba(164, 185, 203, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(164, 185, 203, 0.16) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(32, 54, 74, 0.86), rgba(27, 48, 67, 0.86));
+  background-size: 34px 34px, 34px 34px, 100% 100%;
   box-shadow:
-    inset 0 0 24px rgba(255, 255, 255, 0.025),
-    0 0 12px rgba(0, 0, 0, 0.16);
+    inset 0 0 18px rgba(255, 255, 255, 0.025),
+    0 0 10px rgba(0, 0, 0, 0.14);
 }
 
 .open-area-main {
@@ -449,8 +449,8 @@ input:focus {
   min-width: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  padding: 4px;
+  gap: 5px;
+  padding: 5px;
 }
 
 .open-area-pairs {
@@ -458,15 +458,15 @@ input:focus {
   flex: 0 0 178px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  padding: 4px;
+  gap: 5px;
+  padding: 5px;
 }
 
 .series-section,
 .pair-section {
   display: grid;
   min-height: 0;
-  gap: 2px;
+  gap: 3px;
 }
 
 .series-section {
@@ -480,23 +480,23 @@ input:focus {
 .series-row {
   display: grid;
   grid-template-columns: repeat(13, 1fr);
-  gap: 2px;
+  gap: 3px;
   min-height: 0;
 }
 
 .pair-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 2px;
+  gap: 3px;
   min-height: 0;
 }
 
 .series-cell,
 .pair-cell {
   min-height: 0;
-  border: 1px solid rgba(174, 195, 210, 0.28);
-  background: rgba(255, 255, 255, 0.015);
-  border-radius: 2px;
+  border: 1px solid rgba(174, 195, 210, 0.24);
+  background: rgba(255, 255, 255, 0.012);
+  border-radius: 3px;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
@@ -530,11 +530,11 @@ input:focus {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  border-radius: 0;
+  border-radius: 2px;
   background: #f8fafc;
   color: #020617;
   border: none;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 900;
   display: flex;
   align-items: center;
@@ -1098,36 +1098,36 @@ input:focus {
   .open-area {
     left: 82px;
     right: 82px;
-    top: 78px;
-    bottom: 305px;
-    gap: 4px;
+    top: 66px;
+    bottom: 288px;
+    gap: 5px;
   }
 
   .open-area-main {
-    gap: 2px;
-    padding: 3px;
+    gap: 3px;
+    padding: 4px;
   }
 
   .open-area-pairs {
-    width: 126px;
-    flex-basis: 126px;
-    gap: 2px;
-    padding: 3px;
+    width: 130px;
+    flex-basis: 130px;
+    gap: 3px;
+    padding: 4px;
   }
 
   .series-section,
   .pair-section {
-    gap: 1px;
+    gap: 2px;
   }
 
   .series-row,
   .pair-row {
-    gap: 1px;
+    gap: 2px;
   }
 
   .series-cell,
   .pair-cell {
-    border-radius: 1px;
+    border-radius: 2px;
   }
 
   .opened-tile {
