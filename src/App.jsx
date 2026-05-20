@@ -686,7 +686,7 @@ input:focus {
   overflow: visible;
 }
 
-.table-discard-zone span {
+.table-discard-zone > span {
   position: absolute;
   top: -19px;
   left: 50%;
@@ -897,8 +897,7 @@ input:focus {
   cursor: default;
 }
 
-.center-static-tile {
-  position: static !important;
+.table-discard-zone .tile span {\n  position: static !important;\n  transform: none !important;\n  color: inherit !important;\n  background: transparent !important;\n  padding: 0 !important;\n  border-radius: 0 !important;\n  font-size: inherit !important;\n  font-weight: 900 !important;\n}\n\n.center-static-tile {\n  position: static !important;
   cursor: default !important;
   width: 42px;
   height: 54px;
