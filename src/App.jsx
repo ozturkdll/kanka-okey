@@ -1,66 +1,10 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  arrayMove,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import "./App.css";
 
 const socket = io("https://kanka-okey-server.onrender.com", {
   transports: ["websocket", "polling"],
 });
-
-function SortableTile({
-  tile,
-  selectedTileId,
-  onSelect,
-  getTileClass,
-  getTileText,
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: tile.id,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 9999 : "auto",
-    opacity: isDragging ? 0.9 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`${getTileClass(tile)} ${
-        selectedTileId === tile.id ? "selected-tile" : ""
-      } ${isDragging ? "dragging-tile" : ""}`}
-      onClick={() => onSelect(tile)}
-      {...attributes}
-      {...listeners}
-    >
-      {getTileText(tile)}
-    </div>
-  );
-}
 
 function App() {
   const [name, setName] = useState("");
@@ -76,21 +20,9 @@ function App() {
   const [deckCount, setDeckCount] = useState(0);
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState("");
   const [discardedTile, setDiscardedTile] = useState(null);
-  const [selectedTileId, setSelectedTileId] = useState(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 6,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 120,
-        tolerance: 8,
-      },
-    })
-  );
+  const [tilePositions, setTilePositions] = useState({});
+  const [draggingTile, setDraggingTile] = useState(null);
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -123,7 +55,7 @@ function App() {
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
-      setSelectedTileId(null);
+      setTilePositions(createInitialTilePositions(data.myHand));
     });
 
     socket.on("game-updated", (data) => {
@@ -134,7 +66,7 @@ function App() {
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
-      setSelectedTileId(null);
+      setTilePositions(createInitialTilePositions(data.myHand));
     });
 
     socket.on("error-message", (message) => {
@@ -151,6 +83,22 @@ function App() {
       socket.off("error-message");
     };
   }, []);
+
+  function createInitialTilePositions(hand) {
+    const positions = {};
+
+    hand.forEach((tile, index) => {
+      const row = index < 11 ? 0 : 1;
+      const col = row === 0 ? index : index - 11;
+
+      positions[tile.id] = {
+        x: 12 + col * 48,
+        y: 10 + row * 62,
+      };
+    });
+
+    return positions;
+  }
 
   function createRoom() {
     if (!name.trim()) {
@@ -187,46 +135,6 @@ function App() {
     alert("Oda kodu kopyalandı.");
   }
 
-  function selectTile(tile) {
-    setSelectedTileId((prev) => (prev === tile.id ? null : tile.id));
-  }
-
-  function discardSelectedTile() {
-    if (!selectedTileId) {
-      alert("Önce atacağın taşı seç.");
-      return;
-    }
-
-    socket.emit("discard-tile", {
-      roomCode,
-      tileId: selectedTileId,
-    });
-  }
-
-  function handleDragEnd(event) {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    if (active.id !== over.id) {
-      setMyHand((items) => {
-        const oldIndex = items.findIndex((tile) => tile.id === active.id);
-        const newIndex = items.findIndex((tile) => tile.id === over.id);
-
-        if (oldIndex === -1 || newIndex === -1) return items;
-
-        const newHand = arrayMove(items, oldIndex, newIndex);
-
-        socket.emit("reorder-hand", {
-          roomCode,
-          orderedTileIds: newHand.map((tile) => tile.id),
-        });
-
-        return newHand;
-      });
-    }
-  }
-
   function getTileClass(tile) {
     if (!tile) return "tile";
     if (tile.fake) return "tile fake";
@@ -239,16 +147,81 @@ function App() {
     return tile.number;
   }
 
-  function renderTile(tile) {
+  function handleTilePointerDown(e, tile) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    const currentPosition = tilePositions[tile.id] || { x: 0, y: 0 };
+
+    setDraggingTile({
+      id: tile.id,
+      startPointerX: e.clientX,
+      startPointerY: e.clientY,
+      startTileX: currentPosition.x,
+      startTileY: currentPosition.y,
+    });
+  }
+
+  function handleTilePointerMove(e, tile) {
+    if (!draggingTile || draggingTile.id !== tile.id) return;
+
+    const nextX =
+      draggingTile.startTileX + (e.clientX - draggingTile.startPointerX);
+    const nextY =
+      draggingTile.startTileY + (e.clientY - draggingTile.startPointerY);
+
+    setTilePositions((prev) => ({
+      ...prev,
+      [tile.id]: {
+        x: nextX,
+        y: nextY,
+      },
+    }));
+  }
+
+  function handleTilePointerUp(e, tile) {
+    if (!draggingTile || draggingTile.id !== tile.id) return;
+
+    const draggedElement = e.currentTarget;
+    draggedElement.style.pointerEvents = "none";
+    const elementUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
+    draggedElement.style.pointerEvents = "";
+
+    const dropZone = elementUnderPointer?.closest(".my-table-discard-zone");
+
+    if (dropZone) {
+      socket.emit("discard-tile", {
+        roomCode,
+        tileId: tile.id,
+      });
+    }
+
+    setDraggingTile(null);
+  }
+
+  function handleTilePointerCancel() {
+    setDraggingTile(null);
+  }
+
+  function renderFreeTile(tile) {
+    const position = tilePositions[tile.id] || { x: 0, y: 0 };
+
     return (
-      <SortableTile
+      <div
         key={tile.id}
-        tile={tile}
-        selectedTileId={selectedTileId}
-        onSelect={selectTile}
-        getTileClass={getTileClass}
-        getTileText={getTileText}
-      />
+        className={`${getTileClass(tile)} ${
+          draggingTile?.id === tile.id ? "dragging-tile" : ""
+        }`}
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+        }}
+        onPointerDown={(e) => handleTilePointerDown(e, tile)}
+        onPointerMove={(e) => handleTilePointerMove(e, tile)}
+        onPointerUp={(e) => handleTilePointerUp(e, tile)}
+        onPointerCancel={handleTilePointerCancel}
+      >
+        {getTileText(tile)}
+      </div>
     );
   }
 
@@ -386,26 +359,41 @@ function App() {
                 </div>
               )}
 
+              <div className="table-discard-zone top-left-discard-zone">
+                <span>Atılan</span>
+                <div className="empty-discard-slot">+</div>
+              </div>
+
+              <div className="table-discard-zone top-right-discard-zone">
+                <span>Atılan</span>
+                <div className="empty-discard-slot">+</div>
+              </div>
+
+              <div className="table-discard-zone bottom-left-discard-zone">
+                <span>Atılan</span>
+                <div className="empty-discard-slot">+</div>
+              </div>
+
+              <div className="table-discard-zone my-table-discard-zone bottom-right-discard-zone">
+                <span>TAŞ AT</span>
+                {discardedTile ? (
+                  <div className={getTileClass(discardedTile)}>
+                    {getTileText(discardedTile)}
+                  </div>
+                ) : (
+                  <div className="empty-discard-slot">+</div>
+                )}
+              </div>
+
               <div className="center-tools clean-center">
                 <div className="indicator-tile">
                   <span>Gösterge</span>
-                  <div className="tile yellow">2</div>
+                  <div className="tile yellow center-static-tile">2</div>
                 </div>
 
                 <div className="deck-back-box">
                   <span>Kalan</span>
                   <div className="deck-back-tile">{deckCount}</div>
-                </div>
-
-                <div className="center-discard-box">
-                  <span>Son Atılan</span>
-                  {discardedTile ? (
-                    <div className={getTileClass(discardedTile)}>
-                      {getTileText(discardedTile)}
-                    </div>
-                  ) : (
-                    <div className="empty-discard-slot">+</div>
-                  )}
                 </div>
               </div>
 
@@ -425,29 +413,8 @@ function App() {
                 <div className="rack-wood-top"></div>
 
                 <div className="rack-main">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={myHand.map((tile) => tile.id)}
-                      strategy={rectSortingStrategy}
-                    >
-                      <div className="rack-rows rack-free-grid">
-                        {myHand.map((tile) => renderTile(tile))}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-
-                  <div className="my-discard-zone">
-                    <div
-                      className="discard-box-small clickable-discard"
-                      onClick={discardSelectedTile}
-                    >
-                      <span>TAŞ AT</span>
-                      <div className="empty-discard-slot">+</div>
-                    </div>
+                  <div className="free-rack-board">
+                    {myHand.map((tile) => renderFreeTile(tile))}
                   </div>
                 </div>
 
@@ -458,9 +425,7 @@ function App() {
 
           <div className="bottom-actions">
             <button>Taş Çek</button>
-            <button className="secondary" onClick={discardSelectedTile}>
-              Taş At
-            </button>
+            <button className="secondary">Taş At</button>
             <button className="start">101 Aç</button>
           </div>
         </div>
