@@ -418,30 +418,26 @@ input:focus {
 /* ORTA AÇMA ALANI */
 .open-area {
   position: absolute;
-  left: 104px;
-  right: 104px;
-  top: 68px;
-  bottom: 258px;
+  left: 96px;
+  right: 96px;
+  top: 52px;
+  bottom: 238px;
   z-index: 5;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .open-area-main,
 .open-area-pairs {
   position: relative;
   height: 100%;
-  border-radius: 7px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 2px solid rgba(214, 228, 240, 0.55);
-  background:
-    linear-gradient(rgba(164, 185, 203, 0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(164, 185, 203, 0.16) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 54, 74, 0.86), rgba(27, 48, 67, 0.86));
-  background-size: 34px 34px, 34px 34px, 100% 100%;
+  border: 2px solid rgba(214, 228, 240, 0.42);
+  background: rgba(24, 47, 67, 0.72);
   box-shadow:
-    inset 0 0 18px rgba(255, 255, 255, 0.025),
-    0 0 10px rgba(0, 0, 0, 0.14);
+    inset 0 0 20px rgba(255, 255, 255, 0.035),
+    0 0 12px rgba(0, 0, 0, 0.18);
 }
 
 .open-area-main {
@@ -449,30 +445,27 @@ input:focus {
   min-width: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  padding: 5px;
+  gap: 8px;
+  padding: 26px 8px 8px;
 }
 
 .open-area-pairs {
-  width: 178px;
-  flex: 0 0 178px;
+  width: 186px;
+  flex: 0 0 186px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  padding: 5px;
+  gap: 8px;
+  padding: 26px 8px 8px;
 }
 
 .series-section,
 .pair-section {
   display: grid;
   min-height: 0;
-  gap: 3px;
+  gap: 5px;
 }
 
-.series-section {
-  grid-template-rows: repeat(12, 1fr);
-}
-
+.series-section,
 .pair-section {
   grid-template-rows: repeat(12, 1fr);
 }
@@ -480,23 +473,23 @@ input:focus {
 .series-row {
   display: grid;
   grid-template-columns: repeat(13, 1fr);
-  gap: 3px;
+  gap: 4px;
   min-height: 0;
 }
 
 .pair-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 3px;
+  gap: 4px;
   min-height: 0;
 }
 
 .series-cell,
 .pair-cell {
   min-height: 0;
-  border: 1px solid rgba(174, 195, 210, 0.24);
-  background: rgba(255, 255, 255, 0.012);
-  border-radius: 3px;
+  border: 1px solid rgba(214, 228, 240, 0.28);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 5px;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
@@ -505,8 +498,8 @@ input:focus {
 
 .series-cell.drop-target,
 .pair-cell.drop-target {
-  background: rgba(34, 197, 94, 0.14);
-  border-color: rgba(34, 197, 94, 0.62);
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.65);
 }
 
 .open-area-label,
@@ -516,12 +509,12 @@ input:focus {
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.68);
   font-size: 10px;
   font-weight: 900;
-  background: rgba(2, 6, 23, 0.34);
+  background: rgba(2, 6, 23, 0.38);
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 3px 10px;
   white-space: nowrap;
 }
 
@@ -530,11 +523,11 @@ input:focus {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  border-radius: 2px;
+  border-radius: 4px;
   background: #f8fafc;
   color: #020617;
   border: none;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
   display: flex;
   align-items: center;
@@ -569,7 +562,7 @@ input:focus {
   outline-offset: -2px;
 }
 
-.hand-summary-box {
+.hand-summary-box {.hand-summary-box {
   position: absolute;
   z-index: 42;
   right: 278px;
@@ -1025,6 +1018,32 @@ input:focus {
   margin-bottom: 14px;
 }
 
+.table-toast-stack {
+  position: absolute;
+  left: 50%;
+  top: 58px;
+  transform: translateX(-50%);
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.table-toast {
+  min-width: 260px;
+  max-width: 520px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(250, 204, 21, 0.7);
+  color: #fef3c7;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
 .notice-pill {
   position: absolute;
   left: 50%;
@@ -1096,28 +1115,28 @@ input:focus {
   }
 
   .open-area {
-    left: 82px;
-    right: 82px;
-    top: 66px;
-    bottom: 288px;
-    gap: 5px;
+    left: 78px;
+    right: 78px;
+    top: 58px;
+    bottom: 285px;
+    gap: 6px;
   }
 
   .open-area-main {
-    gap: 3px;
-    padding: 4px;
+    gap: 5px;
+    padding: 24px 5px 5px;
   }
 
   .open-area-pairs {
-    width: 130px;
-    flex-basis: 130px;
-    gap: 3px;
-    padding: 4px;
+    width: 132px;
+    flex-basis: 132px;
+    gap: 5px;
+    padding: 24px 5px 5px;
   }
 
   .series-section,
   .pair-section {
-    gap: 2px;
+    gap: 3px;
   }
 
   .series-row,
@@ -1127,11 +1146,11 @@ input:focus {
 
   .series-cell,
   .pair-cell {
-    border-radius: 2px;
+    border-radius: 3px;
   }
 
   .opened-tile {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .top-left-discard-zone {
@@ -1269,6 +1288,7 @@ function App() {
   const [totalScores, setTotalScores] = useState({});
   const [handNumber, setHandNumber] = useState(1);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [tableMessages, setTableMessages] = useState([]);
 
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
@@ -1287,6 +1307,19 @@ function App() {
 
     socket.on("connect_error", () => {
       setConnectionStatus("Server bağlantı hatası");
+    });
+
+    socket.on("table-message", (data) => {
+      const id = Date.now() + Math.random();
+      const message = data && data.message ? data.message : "Masa bildirimi";
+
+      setTableMessages((prev) => {
+        return [...prev, { id, message }].slice(-3);
+      });
+
+      setTimeout(() => {
+        setTableMessages((prev) => prev.filter((item) => item.id !== id));
+      }, 5000);
     });
 
     socket.on("room-created", (data) => {
@@ -1342,6 +1375,7 @@ function App() {
     return () => {
       socket.off("connect");
       socket.off("connect_error");
+      socket.off("table-message");
       socket.off("room-created");
       socket.off("players-updated");
       socket.off("game-started");
@@ -2685,6 +2719,15 @@ function App() {
 
             <div className="okey-table">
               <div className="table-felt">
+                {tableMessages.length > 0 && (
+                  <div className="table-toast-stack">
+                    {tableMessages.map((item) => (
+                      <div className="table-toast" key={item.id}>
+                        {item.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {mustUseTakenTileId && (
                   <div className="notice-pill">
                     Yandan aldığın taşı açarken kullan veya geri bırak
