@@ -21,6 +21,10 @@ function App() {
   const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState("");
   const [discardedTile, setDiscardedTile] = useState(null);
 
+  const [dragStart, setDragStart] = useState(null);
+  const [draggingTileId, setDraggingTileId] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
   useEffect(() => {
     socket.on("connect", () => {
       setConnectionStatus("Server bağlı");
@@ -54,6 +58,16 @@ function App() {
       setDiscardedTile(data.discardedTile);
     });
 
+    socket.on("game-updated", (data) => {
+      setRoomCode(data.roomCode);
+      setPlayers(data.players);
+      setMyPlayerId(data.myPlayerId);
+      setMyHand(data.myHand);
+      setDeckCount(data.deckCount);
+      setCurrentTurnPlayerId(data.currentTurnPlayerId);
+      setDiscardedTile(data.discardedTile);
+    });
+
     socket.on("error-message", (message) => {
       alert(message);
     });
@@ -64,6 +78,7 @@ function App() {
       socket.off("room-created");
       socket.off("players-updated");
       socket.off("game-started");
+      socket.off("game-updated");
       socket.off("error-message");
     };
   }, []);
@@ -107,6 +122,61 @@ function App() {
     alert("Oda kodu kopyalandı.");
   }
 
+  function handleTilePointerDown(e, tile) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+    });
+
+    setDraggingTileId(tile.id);
+    setDragOffset({ x: 0, y: 0 });
+  }
+
+  function handleTilePointerMove(e, tile) {
+    if (draggingTileId !== tile.id || !dragStart) return;
+
+    setDragOffset({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  }
+
+  function handleTilePointerEnter(targetTile) {
+    if (!draggingTileId || draggingTileId === targetTile.id) return;
+
+    setMyHand((prevHand) => {
+      const fromIndex = prevHand.findIndex((tile) => tile.id === draggingTileId);
+      const toIndex = prevHand.findIndex((tile) => tile.id === targetTile.id);
+
+      if (fromIndex === -1 || toIndex === -1) return prevHand;
+
+      const newHand = [...prevHand];
+      const [movedTile] = newHand.splice(fromIndex, 1);
+      newHand.splice(toIndex, 0, movedTile);
+
+      return newHand;
+    });
+  }
+
+  function handleTilePointerUp(e, tile) {
+    if (draggingTileId !== tile.id || !dragStart) return;
+
+    const dragDistanceX = e.clientX - dragStart.x;
+
+    if (dragDistanceX > 130) {
+      socket.emit("discard-tile", {
+        roomCode,
+        tileId: tile.id,
+      });
+    }
+
+    setDragStart(null);
+    setDraggingTileId(null);
+    setDragOffset({ x: 0, y: 0 });
+  }
+
   function getTileClass(tile) {
     if (!tile) return "tile";
     if (tile.fake) return "tile fake";
@@ -117,6 +187,29 @@ function App() {
     if (!tile) return "";
     if (tile.fake) return "S";
     return tile.number;
+  }
+
+  function renderTile(tile) {
+    return (
+      <div
+        className={`${getTileClass(tile)} ${
+          draggingTileId === tile.id ? "dragging" : ""
+        }`}
+        key={tile.id}
+        style={{
+          transform:
+            draggingTileId === tile.id
+              ? `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(1.08)`
+              : "none",
+        }}
+        onPointerDown={(e) => handleTilePointerDown(e, tile)}
+        onPointerMove={(e) => handleTilePointerMove(e, tile)}
+        onPointerEnter={() => handleTilePointerEnter(tile)}
+        onPointerUp={(e) => handleTilePointerUp(e, tile)}
+      >
+        {getTileText(tile)}
+      </div>
+    );
   }
 
   const opponents = players.filter((player) => player.id !== myPlayerId);
@@ -320,19 +413,11 @@ function App() {
 
               <div className="rack">
                 <div className="rack-row">
-                  {myHand.slice(0, 11).map((tile) => (
-                    <div className={getTileClass(tile)} key={tile.id}>
-                      {getTileText(tile)}
-                    </div>
-                  ))}
+                  {myHand.slice(0, 11).map((tile) => renderTile(tile))}
                 </div>
 
                 <div className="rack-row">
-                  {myHand.slice(11).map((tile) => (
-                    <div className={getTileClass(tile)} key={tile.id}>
-                      {getTileText(tile)}
-                    </div>
-                  ))}
+                  {myHand.slice(11).map((tile) => renderTile(tile))}
                 </div>
               </div>
             </div>

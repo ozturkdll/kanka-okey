@@ -778,3 +778,26 @@ input:focus {
     font-size: 10px;
   }
 }
+.tile {
+  touch-action: none;
+}
+
+.tile.dragging {
+  
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.45),
+    0 12px 24px rgba(0, 0, 0, 0.35);
+}
+.tile {
+  touch-action: none;
+  position: relative;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.tile.dragging {
+  z-index: 999;
+  opacity: 0.92;
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.45),
+    0 14px 28px rgba(0, 0, 0, 0.4);
+}

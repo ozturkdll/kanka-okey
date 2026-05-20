@@ -183,6 +183,57 @@ io.on("connection", (socket) => {
 
   socket.on("start-game", ({ roomCode }) => {
     const code = roomCode.toUpperCase();
+socket.on("discard-tile", ({ roomCode, tileId }) => {
+  const code = roomCode.toUpperCase();
+  const room = rooms[code];
+
+  if (!room || !room.game || !room.game.started) {
+    socket.emit("error-message", "Oyun bulunamadı.");
+    return;
+  }
+
+  if (room.game.currentTurnPlayerId !== socket.id) {
+    socket.emit("error-message", "Sıra sende değil.");
+    return;
+  }
+
+  const hand = room.game.hands[socket.id];
+
+  if (!hand) {
+    socket.emit("error-message", "El bulunamadı.");
+    return;
+  }
+
+  const tileIndex = hand.findIndex((tile) => tile.id === tileId);
+
+  if (tileIndex === -1) {
+    socket.emit("error-message", "Bu taş sende yok.");
+    return;
+  }
+
+  const [discardedTile] = hand.splice(tileIndex, 1);
+
+  room.game.discardedTile = discardedTile;
+
+  const currentIndex = room.players.findIndex(
+    (player) => player.id === socket.id
+  );
+
+  const nextIndex = (currentIndex + 1) % room.players.length;
+  room.game.currentTurnPlayerId = room.players[nextIndex].id;
+
+  room.players.forEach((player) => {
+    io.to(player.id).emit("game-updated", {
+      roomCode: code,
+      players: room.players,
+      myPlayerId: player.id,
+      myHand: room.game.hands[player.id],
+      deckCount: room.game.deck.length,
+      currentTurnPlayerId: room.game.currentTurnPlayerId,
+      discardedTile: room.game.discardedTile,
+    });
+  });
+});
 
     if (!rooms[code]) {
       socket.emit("error-message", "Oda bulunamadı.");
