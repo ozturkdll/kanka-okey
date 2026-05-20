@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import "./App.css";
 
@@ -24,6 +24,14 @@ function App() {
   const [dragStart, setDragStart] = useState(null);
   const [draggingTileId, setDraggingTileId] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isOverDiscardZone, setIsOverDiscardZone] = useState(false);
+  const [heldOkeyTileId, setHeldOkeyTileId] = useState(null);
+
+  const myHandRef = useRef([]);
+
+  useEffect(() => {
+    myHandRef.current = myHand;
+  }, [myHand]);
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -53,6 +61,7 @@ function App() {
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
       setMyHand(data.myHand);
+      myHandRef.current = data.myHand;
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
@@ -63,6 +72,7 @@ function App() {
       setPlayers(data.players);
       setMyPlayerId(data.myPlayerId);
       setMyHand(data.myHand);
+      myHandRef.current = data.myHand;
       setDeckCount(data.deckCount);
       setCurrentTurnPlayerId(data.currentTurnPlayerId);
       setDiscardedTile(data.discardedTile);
@@ -122,6 +132,43 @@ function App() {
     alert("Oda kodu kopyalandı.");
   }
 
+  function isOkeyTile(tile) {
+    if (!tile) return false;
+
+    // Şimdilik gösterge sarı 2 olduğu için okey sarı 3 kabul ediyoruz.
+    // Sahte okey de basılı tutunca arkasını döndürsün diye ekledim.
+    return tile.fake || (tile.color === "yellow" && tile.number === 3);
+  }
+
+  function reorderHand(targetTileId) {
+    if (!draggingTileId || draggingTileId === targetTileId) return;
+
+    setMyHand((prevHand) => {
+      const fromIndex = prevHand.findIndex((tile) => tile.id === draggingTileId);
+      const toIndex = prevHand.findIndex((tile) => tile.id === targetTileId);
+
+      if (fromIndex === -1 || toIndex === -1) return prevHand;
+
+      const newHand = [...prevHand];
+      const [movedTile] = newHand.splice(fromIndex, 1);
+      newHand.splice(toIndex, 0, movedTile);
+
+      myHandRef.current = newHand;
+
+      return newHand;
+    });
+  }
+
+  function getElementUnderPointer(e) {
+    const draggedElement = e.currentTarget;
+
+    draggedElement.style.pointerEvents = "none";
+    const element = document.elementFromPoint(e.clientX, e.clientY);
+    draggedElement.style.pointerEvents = "";
+
+    return element;
+  }
+
   function handleTilePointerDown(e, tile) {
     e.currentTarget.setPointerCapture(e.pointerId);
 
@@ -132,6 +179,10 @@ function App() {
 
     setDraggingTileId(tile.id);
     setDragOffset({ x: 0, y: 0 });
+
+    if (isOkeyTile(tile)) {
+      setHeldOkeyTileId(tile.id);
+    }
   }
 
   function handleTilePointerMove(e, tile) {
@@ -141,31 +192,34 @@ function App() {
       x: e.clientX - dragStart.x,
       y: e.clientY - dragStart.y,
     });
-  }
 
-  function handleTilePointerEnter(targetTile) {
-    if (!draggingTileId || draggingTileId === targetTile.id) return;
+    const element = getElementUnderPointer(e);
 
-    setMyHand((prevHand) => {
-      const fromIndex = prevHand.findIndex((tile) => tile.id === draggingTileId);
-      const toIndex = prevHand.findIndex((tile) => tile.id === targetTile.id);
+    const targetTile = element?.closest("[data-tile-id]");
+    const discardZone = element?.closest(".discard-drop-zone");
 
-      if (fromIndex === -1 || toIndex === -1) return prevHand;
+    setIsOverDiscardZone(Boolean(discardZone));
 
-      const newHand = [...prevHand];
-      const [movedTile] = newHand.splice(fromIndex, 1);
-      newHand.splice(toIndex, 0, movedTile);
-
-      return newHand;
-    });
+    if (targetTile) {
+      const targetTileId = Number(targetTile.dataset.tileId);
+      reorderHand(targetTileId);
+    }
   }
 
   function handleTilePointerUp(e, tile) {
     if (draggingTileId !== tile.id || !dragStart) return;
 
-    const dragDistanceX = e.clientX - dragStart.x;
+    const element = getElementUnderPointer(e);
+    const discardZone = element?.closest(".discard-drop-zone");
 
-    if (dragDistanceX > 130) {
+    const orderedTileIds = myHandRef.current.map((handTile) => handTile.id);
+
+    socket.emit("reorder-hand", {
+      roomCode,
+      orderedTileIds,
+    });
+
+    if (discardZone) {
       socket.emit("discard-tile", {
         roomCode,
         tileId: tile.id,
@@ -175,16 +229,36 @@ function App() {
     setDragStart(null);
     setDraggingTileId(null);
     setDragOffset({ x: 0, y: 0 });
+    setIsOverDiscardZone(false);
+    setHeldOkeyTileId(null);
+  }
+
+  function handleTilePointerCancel() {
+    setDragStart(null);
+    setDraggingTileId(null);
+    setDragOffset({ x: 0, y: 0 });
+    setIsOverDiscardZone(false);
+    setHeldOkeyTileId(null);
   }
 
   function getTileClass(tile) {
     if (!tile) return "tile";
+
+    if (heldOkeyTileId === tile.id && isOkeyTile(tile)) {
+      return "tile back okey-back";
+    }
+
     if (tile.fake) return "tile fake";
     return `tile ${tile.color}`;
   }
 
   function getTileText(tile) {
     if (!tile) return "";
+
+    if (heldOkeyTileId === tile.id && isOkeyTile(tile)) {
+      return "?";
+    }
+
     if (tile.fake) return "S";
     return tile.number;
   }
@@ -196,6 +270,7 @@ function App() {
           draggingTileId === tile.id ? "dragging" : ""
         }`}
         key={tile.id}
+        data-tile-id={tile.id}
         style={{
           transform:
             draggingTileId === tile.id
@@ -204,8 +279,8 @@ function App() {
         }}
         onPointerDown={(e) => handleTilePointerDown(e, tile)}
         onPointerMove={(e) => handleTilePointerMove(e, tile)}
-        onPointerEnter={() => handleTilePointerEnter(tile)}
         onPointerUp={(e) => handleTilePointerUp(e, tile)}
+        onPointerCancel={handleTilePointerCancel}
       >
         {getTileText(tile)}
       </div>
@@ -221,6 +296,7 @@ function App() {
   const leftPlayer = opponents[1];
   const rightPlayer = opponents[2];
   const me = players.find((player) => player.id === myPlayerId);
+  const isMyTurn = currentTurnPlayerId === myPlayerId;
 
   return (
     <div className="page">
@@ -294,7 +370,7 @@ function App() {
               <strong>{roomCode}</strong>
             </div>
 
-            <div className="turn-pill">
+            <div className={`turn-pill ${isMyTurn ? "my-turn" : ""}`}>
               Sıra: {currentTurnPlayer ? currentTurnPlayer.name : "Bekleniyor"}
             </div>
 
@@ -302,9 +378,13 @@ function App() {
           </div>
 
           <div className="okey-table">
-            <div className="table-felt">
+            <div className={`table-felt ${isMyTurn ? "table-my-turn" : ""}`}>
               {topPlayer && (
-                <div className="player-badge top-player">
+                <div
+                  className={`player-badge top-player ${
+                    currentTurnPlayerId === topPlayer.id ? "active-turn" : ""
+                  }`}
+                >
                   <div className="avatar">{topPlayer.name[0]}</div>
                   <div>
                     <strong>{topPlayer.name}</strong>
@@ -314,7 +394,11 @@ function App() {
               )}
 
               {leftPlayer && (
-                <div className="player-badge left-player">
+                <div
+                  className={`player-badge left-player ${
+                    currentTurnPlayerId === leftPlayer.id ? "active-turn" : ""
+                  }`}
+                >
                   <div className="avatar">{leftPlayer.name[0]}</div>
                   <div>
                     <strong>{leftPlayer.name}</strong>
@@ -324,7 +408,11 @@ function App() {
               )}
 
               {rightPlayer && (
-                <div className="player-badge right-player">
+                <div
+                  className={`player-badge right-player ${
+                    currentTurnPlayerId === rightPlayer.id ? "active-turn" : ""
+                  }`}
+                >
                   <div className="avatar">{rightPlayer.name[0]}</div>
                   <div>
                     <strong>{rightPlayer.name}</strong>
@@ -403,21 +491,36 @@ function App() {
                 </button>
               </div>
 
-              <div className="my-player-card">
+              <div
+                className={`my-player-card ${
+                  currentTurnPlayerId === myPlayerId ? "active-turn" : ""
+                }`}
+              >
                 <div className="avatar">{me ? me.name[0] : "S"}</div>
                 <div>
                   <strong>{me ? me.name : "Sen"}</strong>
-                  <span>🟡 266</span>
+                  <span>{isMyTurn ? "Sıra sende" : "Bekle"}</span>
                 </div>
               </div>
 
-              <div className="rack">
-                <div className="rack-row">
-                  {myHand.slice(0, 11).map((tile) => renderTile(tile))}
+              <div className={`rack ${isMyTurn ? "rack-my-turn" : ""}`}>
+                <div className="rack-rows">
+                  <div className="rack-row">
+                    {myHand.slice(0, 11).map((tile) => renderTile(tile))}
+                  </div>
+
+                  <div className="rack-row">
+                    {myHand.slice(11).map((tile) => renderTile(tile))}
+                  </div>
                 </div>
 
-                <div className="rack-row">
-                  {myHand.slice(11).map((tile) => renderTile(tile))}
+                <div
+                  className={`discard-drop-zone ${
+                    isOverDiscardZone ? "drop-zone-active" : ""
+                  }`}
+                >
+                  <span>TAŞ AT</span>
+                  <small>Buraya bırak</small>
                 </div>
               </div>
             </div>

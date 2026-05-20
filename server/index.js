@@ -183,6 +183,30 @@ io.on("connection", (socket) => {
 
   socket.on("start-game", ({ roomCode }) => {
     const code = roomCode.toUpperCase();
+socket.on("reorder-hand", ({ roomCode, orderedTileIds }) => {
+  const code = roomCode.toUpperCase();
+  const room = rooms[code];
+
+  if (!room || !room.game || !room.game.started) {
+    return;
+  }
+
+  const hand = room.game.hands[socket.id];
+
+  if (!hand) {
+    return;
+  }
+
+  const tileMap = new Map(hand.map((tile) => [tile.id, tile]));
+
+  const reorderedHand = orderedTileIds
+    .map((id) => tileMap.get(id))
+    .filter(Boolean);
+
+  if (reorderedHand.length === hand.length) {
+    room.game.hands[socket.id] = reorderedHand;
+  }
+});
 socket.on("discard-tile", ({ roomCode, tileId }) => {
   const code = roomCode.toUpperCase();
   const room = rooms[code];
