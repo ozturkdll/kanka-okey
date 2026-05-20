@@ -10,6 +10,11 @@ const SLOT_WIDTH = 45;
 const ROW_1_Y = 10;
 const ROW_2_Y = 70;
 
+const INDICATOR_TILE = {
+  color: "yellow",
+  number: 2,
+};
+
 const styles = `
 * {
   box-sizing: border-box;
@@ -40,8 +45,6 @@ button {
   justify-content: center;
   padding: 18px;
 }
-
-/* HOME */
 
 .home-card {
   width: 100%;
@@ -169,8 +172,6 @@ input:focus {
   justify-content: center;
 }
 
-/* GAME */
-
 .okey-screen {
   width: 100%;
   max-width: 1120px;
@@ -223,8 +224,6 @@ input:focus {
   color: #e2e8f0;
 }
 
-/* TABLE */
-
 .okey-table {
   background: linear-gradient(135deg, #6b3f1d, #2f1b0d);
   border-radius: 34px;
@@ -259,8 +258,6 @@ input:focus {
   color: rgba(255, 255, 255, 0.05);
   pointer-events: none;
 }
-
-/* PLAYER CARDS */
 
 .player-badge,
 .my-player-card {
@@ -402,8 +399,6 @@ input:focus {
   border-radius: 999px;
 }
 
-/* OPEN AREA */
-
 .open-area {
   position: absolute;
   left: 104px;
@@ -424,7 +419,7 @@ input:focus {
     linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px),
     rgba(2, 6, 23, 0.06);
-  background-size: 28px 28px;
+  background-size: 24px 24px;
   box-shadow:
     inset 0 0 35px rgba(255, 255, 255, 0.02),
     0 0 16px rgba(255, 255, 255, 0.035);
@@ -440,8 +435,8 @@ input:focus {
   flex: 3;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 8px;
+  gap: 7px;
+  padding: 7px;
 }
 
 .pair-slot {
@@ -451,7 +446,7 @@ input:focus {
     linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     rgba(255, 255, 255, 0.025);
-  background-size: 24px 24px;
+  background-size: 20px 20px;
   position: relative;
 }
 
@@ -480,14 +475,12 @@ input:focus {
   z-index: 2;
 }
 
-/* HAND SUMMARY + CENTER TOOLS */
-
 .hand-summary-box {
   position: absolute;
   z-index: 42;
   right: 270px;
   bottom: 220px;
-  width: 92px;
+  width: 104px;
   border-radius: 12px;
   background: rgba(2, 6, 23, 0.74);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -572,8 +565,6 @@ input:focus {
     0 5px 10px rgba(0, 0, 0, 0.22);
 }
 
-/* DISCARD ZONES */
-
 .table-discard-zone {
   position: absolute;
   z-index: 44;
@@ -642,8 +633,6 @@ input:focus {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* LEFT ACTION STACK */
-
 .left-action-stack {
   position: absolute;
   left: 14px;
@@ -670,8 +659,6 @@ input:focus {
 .left-action-stack button:hover {
   background: rgba(30, 41, 59, 0.96);
 }
-
-/* RACK */
 
 .rack {
   position: absolute;
@@ -743,8 +730,6 @@ input:focus {
   top: 68px;
 }
 
-/* TILES */
-
 .tile {
   width: 42px;
   height: 54px;
@@ -811,7 +796,24 @@ input:focus {
   border-color: #a855f7;
 }
 
-/* BOTTOM BUTTONS */
+.tile.back-tile {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #f8fafc,
+      #f8fafc 5px,
+      #fecaca 5px,
+      #fecaca 10px
+    );
+  color: transparent;
+  border-color: #e2e8f0;
+}
+
+.tile.back-tile::after {
+  content: "★";
+  color: #991b1b;
+  font-size: 18px;
+}
 
 .bottom-actions {
   display: none;
@@ -834,8 +836,6 @@ input:focus {
 .bottom-actions button.start {
   background: linear-gradient(135deg, #f97316, #ea580c);
 }
-
-/* MOBILE */
 
 @media (max-width: 900px) {
   .page {
@@ -866,10 +866,6 @@ input:focus {
   .table-felt {
     min-height: 690px;
     border-radius: 18px;
-  }
-
-  .top-player {
-    top: 8px;
   }
 
   .left-player {
@@ -910,21 +906,6 @@ input:focus {
     padding: 6px;
   }
 
-  .top-left-discard-zone {
-    left: 82px;
-    top: 66px;
-  }
-
-  .top-right-discard-zone {
-    right: 82px;
-    top: 66px;
-  }
-
-  .bottom-left-discard-zone {
-    left: 82px;
-    bottom: 218px;
-  }
-
   .bottom-right-discard-zone {
     right: 22px;
     bottom: 218px;
@@ -933,7 +914,7 @@ input:focus {
   .hand-summary-box {
     right: 206px;
     bottom: 214px;
-    width: 78px;
+    width: 88px;
     padding: 6px 7px;
   }
 
@@ -1021,9 +1002,12 @@ function App() {
   const [tilePositions, setTilePositions] = useState({});
   const [draggingTile, setDraggingTile] = useState(null);
   const [isOverMyDiscard, setIsOverMyDiscard] = useState(false);
+  const [flippedOkeyIds, setFlippedOkeyIds] = useState(() => new Set());
+  const [heldOkeyTileId, setHeldOkeyTileId] = useState(null);
 
   const rackBoardRef = useRef(null);
   const pendingDiscardRef = useRef(null);
+  const holdTimerRef = useRef(null);
 
   useEffect(() => {
     socket.on("connect", () => {
@@ -1118,6 +1102,22 @@ function App() {
       socket.off("error-message");
     };
   }, []);
+
+  function getOkeyNumber() {
+    return INDICATOR_TILE.number === 13 ? 1 : INDICATOR_TILE.number + 1;
+  }
+
+  function isOkeyTile(tile) {
+    if (!tile) return false;
+    if (tile.fake) return true;
+
+    return tile.color === INDICATOR_TILE.color && tile.number === getOkeyNumber();
+  }
+
+  function shouldShowTileBack(tile) {
+    if (!isOkeyTile(tile)) return false;
+    return flippedOkeyIds.has(tile.id) || heldOkeyTileId === tile.id;
+  }
 
   function createInitialTilePositions(hand) {
     const positions = {};
@@ -1216,12 +1216,14 @@ function App() {
 
   function getTileClass(tile) {
     if (!tile) return "tile";
+    if (shouldShowTileBack(tile)) return "tile back-tile";
     if (tile.fake) return "tile fake";
     return `tile ${tile.color}`;
   }
 
   function getTileText(tile) {
     if (!tile) return "";
+    if (shouldShowTileBack(tile)) return "";
     if (tile.fake) return "S";
     return tile.number;
   }
@@ -1379,6 +1381,12 @@ function App() {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
 
+    if (isOkeyTile(tile)) {
+      holdTimerRef.current = setTimeout(() => {
+        setHeldOkeyTileId(tile.id);
+      }, 350);
+    }
+
     const currentPosition = tilePositions[tile.id] || { x: 12, y: ROW_1_Y };
 
     setDraggingTile({
@@ -1410,7 +1418,34 @@ function App() {
     setIsOverMyDiscard(overDiscard);
   }
 
+  function clearOkeyHold() {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+
+    setHeldOkeyTileId(null);
+  }
+
+  function toggleOkeyBack(tile) {
+    if (!isOkeyTile(tile)) return;
+
+    setFlippedOkeyIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(tile.id)) {
+        next.delete(tile.id);
+      } else {
+        next.add(tile.id);
+      }
+
+      return next;
+    });
+  }
+
   function handleTilePointerUp(e, tile) {
+    clearOkeyHold();
+
     if (!draggingTile || draggingTile.id !== tile.id) return;
 
     const overDiscard = isPointerOverMyDiscardZone(e, e.currentTarget);
@@ -1460,6 +1495,8 @@ function App() {
   }
 
   function handleTilePointerCancel(tile) {
+    clearOkeyHold();
+
     if (tile) {
       snapTileToRack(tile.id);
     }
@@ -1474,8 +1511,10 @@ function App() {
     let slot = 0;
     const maxSlot = getMaxSlot();
 
-    groups.forEach((group) => {
-      if (!group.length) return;
+    groups.forEach((groupObject) => {
+      const group = Array.isArray(groupObject) ? groupObject : groupObject.tiles;
+
+      if (!group || !group.length) return;
 
       if (slot + group.length > maxSlot + 1) {
         row = 1;
@@ -1523,112 +1562,171 @@ function App() {
       });
     }
 
-    function findRuns() {
-      const runGroups = [];
+    function takeJokers(count) {
+      const jokers = unused.filter((tile) => isOkeyTile(tile)).slice(0, count);
+      return jokers.length === count ? jokers : null;
+    }
+
+    function findRunsWithJokers() {
       const colors = ["yellow", "blue", "black", "red"];
+      const candidates = [];
 
       colors.forEach((color) => {
-        const tiles = unused
-          .filter((tile) => tile.color === color && !tile.fake)
-          .sort((a, b) => a.number - b.number);
+        for (let start = 1; start <= 11; start++) {
+          for (let length = 3; length <= 5; length++) {
+            const neededNumbers = Array.from({ length }, (_, index) => start + index);
+            if (neededNumbers.some((number) => number > 13)) continue;
 
-        let current = [];
+            const realTiles = [];
+            let missingCount = 0;
 
-        tiles.forEach((tile) => {
-          if (!current.length) {
-            current = [tile];
-            return;
-          }
+            neededNumbers.forEach((number) => {
+              const realTile = unused.find(
+                (tile) =>
+                  !isOkeyTile(tile) &&
+                  tile.color === color &&
+                  tile.number === number &&
+                  !realTiles.some((used) => used.id === tile.id)
+              );
 
-          const last = current[current.length - 1];
+              if (realTile) {
+                realTiles.push(realTile);
+              } else {
+                missingCount++;
+              }
+            });
 
-          if (tile.number === last.number + 1) {
-            current.push(tile);
-          } else if (tile.number !== last.number) {
-            if (current.length >= 3) {
-              runGroups.push([...current]);
+            const jokers = takeJokers(missingCount);
+
+            if (realTiles.length + missingCount >= 3 && jokers) {
+              candidates.push({
+                type: "run",
+                tiles: [...realTiles, ...jokers],
+                score: neededNumbers.reduce((sum, number) => sum + number, 0),
+                quality: realTiles.length * 10 + length,
+              });
             }
-
-            current = [tile];
           }
-        });
-
-        if (current.length >= 3) {
-          runGroups.push([...current]);
         }
       });
 
-      runGroups
-        .sort((a, b) => b.length - a.length)
-        .forEach((group) => {
-          const available = group.filter((tile) =>
+      candidates
+        .sort((a, b) => b.score - a.score || b.quality - a.quality)
+        .forEach((candidate) => {
+          const available = candidate.tiles.every((tile) =>
             unused.some((item) => item.id === tile.id)
           );
 
-          if (available.length >= 3) {
-            groups.push(available);
-            removeTiles(available);
+          if (available) {
+            groups.push(candidate);
+            removeTiles(candidate.tiles);
           }
         });
     }
 
-    function findSameNumberSets() {
-      const byNumber = {};
+    function findSameNumberSetsWithJokers() {
+      const candidates = [];
 
-      unused.forEach((tile) => {
-        if (tile.fake) return;
-        if (!byNumber[tile.number]) byNumber[tile.number] = [];
-        byNumber[tile.number].push(tile);
-      });
+      for (let number = 1; number <= 13; number++) {
+        const realTiles = [];
+        const usedColors = new Set();
 
-      Object.values(byNumber).forEach((tiles) => {
-        const uniqueByColor = {};
+        unused.forEach((tile) => {
+          if (isOkeyTile(tile)) return;
+          if (tile.number !== number) return;
+          if (usedColors.has(tile.color)) return;
 
-        tiles.forEach((tile) => {
-          if (!uniqueByColor[tile.color]) {
-            uniqueByColor[tile.color] = tile;
-          }
+          usedColors.add(tile.color);
+          realTiles.push(tile);
         });
 
-        const group = Object.values(uniqueByColor).sort(
-          (a, b) => (colorOrder[a.color] ?? 99) - (colorOrder[b.color] ?? 99)
+        for (let targetLength = 4; targetLength >= 3; targetLength--) {
+          const missingCount = targetLength - realTiles.length;
+          if (missingCount < 0) continue;
+
+          const jokers = takeJokers(missingCount);
+
+          if (realTiles.length + missingCount >= 3 && jokers) {
+            candidates.push({
+              type: "set",
+              tiles: [...realTiles.slice(0, targetLength), ...jokers],
+              score: number * targetLength,
+              quality: realTiles.length * 10 + targetLength,
+            });
+          }
+        }
+      }
+
+      candidates
+        .sort((a, b) => b.score - a.score || b.quality - a.quality)
+        .forEach((candidate) => {
+          const available = candidate.tiles.every((tile) =>
+            unused.some((item) => item.id === tile.id)
+          );
+
+          if (available) {
+            groups.push(candidate);
+            removeTiles(candidate.tiles);
+          }
+        });
+    }
+
+    function findPairsWithJokers() {
+      const candidates = [];
+      const realTiles = unused.filter((tile) => !isOkeyTile(tile));
+
+      realTiles.forEach((tile) => {
+        const pairTile = unused.find(
+          (other) =>
+            other.id !== tile.id &&
+            !isOkeyTile(other) &&
+            other.color === tile.color &&
+            other.number === tile.number
         );
 
-        if (group.length >= 3) {
-          groups.push(group);
-          removeTiles(group);
+        if (pairTile) {
+          candidates.push({
+            type: "pair",
+            tiles: [tile, pairTile],
+            score: tile.number * 2,
+            quality: 10,
+          });
+        } else {
+          const joker = takeJokers(1)?.[0];
+
+          if (joker) {
+            candidates.push({
+              type: "pair",
+              tiles: [tile, joker],
+              score: tile.number * 2,
+              quality: 7,
+            });
+          }
         }
       });
-    }
 
-    function findPairs() {
-      const byIdentity = {};
+      candidates
+        .sort((a, b) => b.score - a.score || b.quality - a.quality)
+        .forEach((candidate) => {
+          const available = candidate.tiles.every((tile) =>
+            unused.some((item) => item.id === tile.id)
+          );
 
-      unused.forEach((tile) => {
-        if (tile.fake) return;
-        const key = `${tile.color}-${tile.number}`;
-
-        if (!byIdentity[key]) byIdentity[key] = [];
-        byIdentity[key].push(tile);
-      });
-
-      Object.values(byIdentity).forEach((tiles) => {
-        while (tiles.length >= 2) {
-          const group = tiles.splice(0, 2);
-          groups.push(group);
-          removeTiles(group);
-        }
-      });
+          if (available) {
+            groups.push(candidate);
+            removeTiles(candidate.tiles);
+          }
+        });
     }
 
     if (mode === "pair" || mode === "doubleTiles") {
-      findPairs();
-      findSameNumberSets();
-      findRuns();
+      findPairsWithJokers();
+      findSameNumberSetsWithJokers();
+      findRunsWithJokers();
     } else {
-      findRuns();
-      findSameNumberSets();
-      findPairs();
+      findRunsWithJokers();
+      findSameNumberSetsWithJokers();
+      findPairsWithJokers();
     }
 
     const rest = unused.sort((a, b) => {
@@ -1639,7 +1737,12 @@ function App() {
     });
 
     if (rest.length) {
-      groups.push(rest);
+      groups.push({
+        type: "rest",
+        tiles: rest,
+        score: 0,
+        quality: 0,
+      });
     }
 
     return groups;
@@ -1656,7 +1759,7 @@ function App() {
         return closestRackRow(pa.y) - closestRackRow(pb.y) || pa.x - pb.x;
       });
 
-      applyLayoutWithGroups([tiles]);
+      applyLayoutWithGroups([{ type: "rest", tiles }]);
       return;
     }
 
@@ -1677,6 +1780,7 @@ function App() {
           left: `${position.x}px`,
           top: `${position.y}px`,
         }}
+        onDoubleClick={() => toggleOkeyBack(tile)}
         onPointerDown={(e) => handleTilePointerDown(e, tile)}
         onPointerMove={(e) => handleTilePointerMove(e, tile)}
         onPointerUp={(e) => handleTilePointerUp(e, tile)}
@@ -1722,43 +1826,19 @@ function App() {
   }
 
   const handSummary = useMemo(() => {
-    const byNumber = {};
-    const byColor = {};
+    const groups = buildOkeyGroups("run");
 
-    myHand.forEach((tile) => {
-      if (typeof tile.number !== "number") return;
+    const seriPuan = groups
+      .filter((group) => group.type === "run" || group.type === "set")
+      .reduce((sum, group) => sum + group.score, 0);
 
-      byNumber[tile.number] = (byNumber[tile.number] || 0) + 1;
-
-      if (!byColor[tile.color]) byColor[tile.color] = [];
-      byColor[tile.color].push(tile.number);
-    });
-
-    let pairCount = 0;
-    Object.values(byNumber).forEach((count) => {
-      pairCount += Math.floor(count / 2);
-    });
-
-    let runCount = 0;
-    Object.values(byColor).forEach((numbers) => {
-      const uniqueSorted = [...new Set(numbers)].sort((a, b) => a - b);
-      let streak = 1;
-
-      for (let i = 1; i < uniqueSorted.length; i++) {
-        if (uniqueSorted[i] === uniqueSorted[i - 1] + 1) {
-          streak++;
-        } else {
-          if (streak >= 3) runCount++;
-          streak = 1;
-        }
-      }
-
-      if (streak >= 3) runCount++;
-    });
+    const ciftSayisi = buildOkeyGroups("pair").filter(
+      (group) => group.type === "pair"
+    ).length;
 
     return {
-      pairCount,
-      runCount,
+      seriPuan,
+      ciftSayisi,
     };
   }, [myHand]);
 
@@ -1933,19 +2013,21 @@ function App() {
                 <div className="hand-summary-box">
                   <div className="hand-summary-title">El Özeti</div>
                   <div className="hand-summary-row">
-                    <span>Seri</span>
-                    <span>{handSummary.runCount}</span>
+                    <span>Seri Puan</span>
+                    <span>{handSummary.seriPuan}</span>
                   </div>
                   <div className="hand-summary-row">
                     <span>Çift</span>
-                    <span>{handSummary.pairCount}</span>
+                    <span>{handSummary.ciftSayisi}</span>
                   </div>
                 </div>
 
                 <div className="center-tools">
                   <div className="indicator-tile">
                     <span>Gösterge</span>
-                    <div className="tile yellow center-static-tile">2</div>
+                    <div className="tile yellow center-static-tile">
+                      {INDICATOR_TILE.number}
+                    </div>
                   </div>
 
                   <div className="deck-back-box">
