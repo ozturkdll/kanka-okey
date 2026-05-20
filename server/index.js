@@ -30,7 +30,9 @@ const io = new Server(server, {
 });
 
 const rooms = {};
+
 const TURN_SECONDS = 30;
+const NEXT_HAND_DELAY_MS = 4000;
 
 const INDICATOR_TILE = {
   color: "yellow",
@@ -104,6 +106,24 @@ function getEffectiveTile(tile) {
   return tile;
 }
 
+function getTilePoint(tile) {
+  if (!tile) return 0;
+
+  if (isRealOkeyTile(tile)) {
+    return getOkeyNumber();
+  }
+
+  if (tile.fake) {
+    return getOkeyNumber();
+  }
+
+  return Number(tile.number || 0);
+}
+
+function getHandTotal(hand) {
+  return (hand || []).reduce((sum, tile) => sum + getTilePoint(tile), 0);
+}
+
 function evaluateGroup(group) {
   if (!Array.isArray(group) || group.length < 2) {
     return { type: "none", score: 0 };
@@ -120,11 +140,17 @@ function evaluateGroup(group) {
         normalTiles[0].color === normalTiles[1].color &&
         normalTiles[0].number === normalTiles[1].number;
 
-      return { type: same ? "pair" : "none", score: same ? 1 : 0 };
+      return {
+        type: same ? "pair" : "none",
+        score: same ? 1 : 0,
+      };
     }
 
     if (normalTiles.length === 1 && realOkeys.length === 1) {
-      return { type: "pair", score: 1 };
+      return {
+        type: "pair",
+        score: 1,
+      };
     }
   }
 
@@ -134,7 +160,7 @@ function evaluateGroup(group) {
 
     colors.forEach((color) => {
       for (let start = 1; start <= 14 - group.length; start++) {
-        const needed = Array.from(
+        const neededNumbers = Array.from(
           { length: group.length },
           (_, index) => start + index
         );
@@ -142,7 +168,7 @@ function evaluateGroup(group) {
         const usedIds = new Set();
         let missing = 0;
 
-        needed.forEach((number) => {
+        neededNumbers.forEach((number) => {
           const found = normalTiles.find((tile) => {
             if (usedIds.has(tile.id)) return false;
             return tile.color === color && tile.number === number;
@@ -156,7 +182,7 @@ function evaluateGroup(group) {
         });
 
         if (missing === realOkeys.length && usedIds.size === normalTiles.length) {
-          const score = needed.reduce((sum, number) => sum + number, 0);
+          const score = neededNumbers.reduce((sum, number) => sum + number, 0);
           bestRunScore = Math.max(bestRunScore, score);
         }
       }
@@ -188,7 +214,10 @@ function evaluateGroup(group) {
     }
 
     if (bestRunScore || bestSetScore) {
-      return { type: "series", score: Math.max(bestRunScore, bestSetScore) };
+      return {
+        type: "series",
+        score: Math.max(bestRunScore, bestSetScore),
+      };
     }
   }
 
@@ -204,18 +233,38 @@ function publicPlayerList(players) {
 }
 
 /*
-  Saat yönünün tersine:
-  oyuncular [1,2,3,4] ise 1 -> 4 -> 3 -> 2 -> 1
+  Sabit sıra mantığı:
+  Oyuncular join sırasına göre masaya oturur.
+  App tarafında:
+  sen = alt
+  index + 1 = sağ
+  index + 2 = karşı
+  index + 3 = sol
+
+  Oynama sırası:
+  1 -> sağındaki -> sağındaki -> sağındaki
+  yani index + 1
 */
-function getCounterClockwiseNextPlayerId(room, currentPlayerId) {
+function getNextPlayerId(room, currentPlayerId) {
   const currentIndex = room.players.findIndex(
     (player) => player.id === currentPlayerId
   );
 
   if (currentIndex === -1) return room.players[0]?.id || null;
 
-  const nextIndex = (currentIndex - 1 + room.players.length) % room.players.length;
+  const nextIndex = (currentIndex + 1) % room.players.length;
   return room.players[nextIndex]?.id || null;
+}
+
+function getPreviousPlayerId(room, currentPlayerId) {
+  const currentIndex = room.players.findIndex(
+    (player) => player.id === currentPlayerId
+  );
+
+  if (currentIndex === -1) return null;
+
+  const previousIndex = (currentIndex - 1 + room.players.length) % room.players.length;
+  return room.players[previousIndex]?.id || null;
 }
 
 function clearTurnTimer(room) {
@@ -225,11 +274,18 @@ function clearTurnTimer(room) {
   }
 }
 
+function clearNextHandTimer(room) {
+  if (room?.game?.nextHandTimer) {
+    clearTimeout(room.game.nextHandTimer);
+    room.game.nextHandTimer = null;
+  }
+}
+
 function startTurnTimer(roomCode) {
   const code = normalizeRoomCode(roomCode);
   const room = rooms[code];
 
-  if (!room || !room.game) return;
+  if (!room || !room.game || room.game.handFinished) return;
 
   clearTurnTimer(room);
 
@@ -257,12 +313,24 @@ function broadcastGame(roomCode) {
       turnPhase: room.game.turnPhase,
       turnDeadline: room.game.turnDeadline,
       turnSeconds: TURN_SECONDS,
+
       discardedTile: room.game.discardedTile,
       lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
       discardPiles: room.game.discardPiles,
+
       openedSeries: room.game.openedSeries,
       openedPairs: room.game.openedPairs,
+      playerOpenTypes: room.game.playerOpenTypes,
+
       indicatorTile: room.game.indicatorTile,
+
+      takenDiscard: room.game.takenDiscardByPlayerId[player.id] || null,
+      mustUseTakenTileId: room.game.mustUseTakenTileIdByPlayerId[player.id] || null,
+
+      handFinished: room.game.handFinished,
+      handResult: room.game.handResult,
+      totalScores: room.totalScores,
+      handNumber: room.handNumber || 1,
     });
   });
 }
@@ -278,8 +346,62 @@ function drawTileForPlayer(room, playerId) {
 
   room.game.hands[playerId].push(drawnTile);
   room.game.lastDrawnTileByPlayerId[playerId] = drawnTile.id;
+  room.game.drawSourceByPlayerId[playerId] = "deck";
 
   return drawnTile;
+}
+
+function takeDiscardForPlayer(room, playerId) {
+  const previousPlayerId = getPreviousPlayerId(room, playerId);
+
+  if (!previousPlayerId) return null;
+
+  const discardTile = room.game.discardPiles[previousPlayerId];
+
+  if (!discardTile) return null;
+
+  delete room.game.discardPiles[previousPlayerId];
+
+  if (!room.game.hands[playerId]) {
+    room.game.hands[playerId] = [];
+  }
+
+  room.game.hands[playerId].push(discardTile);
+
+  room.game.takenDiscardByPlayerId[playerId] = {
+    tile: discardTile,
+    fromPlayerId: previousPlayerId,
+  };
+
+  room.game.mustUseTakenTileIdByPlayerId[playerId] = discardTile.id;
+  room.game.drawSourceByPlayerId[playerId] = "discard";
+  room.game.lastDrawnTileByPlayerId[playerId] = discardTile.id;
+
+  return discardTile;
+}
+
+function returnTakenDiscardForPlayer(room, playerId) {
+  const taken = room.game.takenDiscardByPlayerId[playerId];
+
+  if (!taken || !taken.tile || !taken.fromPlayerId) return false;
+
+  const hand = room.game.hands[playerId] || [];
+  const tileIndex = hand.findIndex(
+    (tile) => Number(tile.id) === Number(taken.tile.id)
+  );
+
+  if (tileIndex === -1) return false;
+
+  const [returnedTile] = hand.splice(tileIndex, 1);
+
+  room.game.discardPiles[taken.fromPlayerId] = returnedTile;
+  room.game.takenDiscardByPlayerId[playerId] = null;
+  room.game.mustUseTakenTileIdByPlayerId[playerId] = null;
+  room.game.drawSourceByPlayerId[playerId] = null;
+  room.game.lastDrawnTileByPlayerId[playerId] = null;
+  room.game.turnPhase = "draw";
+
+  return true;
 }
 
 function discardTileForPlayer(room, playerId, tileId) {
@@ -316,6 +438,7 @@ function discardTileForPlayer(room, playerId, tileId) {
   room.game.lastDiscardedByPlayerId = playerId;
   room.game.discardPiles[playerId] = discardedTile;
   room.game.lastDrawnTileByPlayerId[playerId] = null;
+  room.game.drawSourceByPlayerId[playerId] = null;
 
   return discardedTile;
 }
@@ -324,72 +447,203 @@ function passTurn(roomCode, currentPlayerId) {
   const code = normalizeRoomCode(roomCode);
   const room = rooms[code];
 
-  if (!room || !room.game) return;
+  if (!room || !room.game || room.game.handFinished) return;
 
-  room.game.currentTurnPlayerId = getCounterClockwiseNextPlayerId(
-    room,
-    currentPlayerId
-  );
-
+  room.game.currentTurnPlayerId = getNextPlayerId(room, currentPlayerId);
   room.game.turnPhase = "draw";
 
   startTurnTimer(code);
   broadcastGame(code);
 }
 
+function calculateHandScores(room, winnerId = null, finishTile = null) {
+  const isOkeyFinish = Boolean(winnerId && isRealOkeyTile(finishTile));
+  const handScores = {};
+
+  room.players.forEach((player) => {
+    const playerId = player.id;
+    const hand = room.game.hands[playerId] || [];
+    const openType = room.game.playerOpenTypes[playerId];
+
+    if (winnerId && playerId === winnerId) {
+      handScores[playerId] = isOkeyFinish ? -202 : -101;
+      return;
+    }
+
+    if (!openType) {
+      handScores[playerId] = 202;
+      return;
+    }
+
+    const handTotal = getHandTotal(hand);
+    let penalty = handTotal;
+
+    if (openType === "pairs") {
+      penalty *= 2;
+    }
+
+    if (isOkeyFinish) {
+      penalty *= 2;
+    }
+
+    handScores[playerId] = penalty;
+  });
+
+  return {
+    handScores,
+    isOkeyFinish,
+  };
+}
+
+function applyScores(room, handScores) {
+  room.players.forEach((player) => {
+    if (typeof room.totalScores[player.id] !== "number") {
+      room.totalScores[player.id] = 0;
+    }
+
+    room.totalScores[player.id] += handScores[player.id] || 0;
+  });
+}
+
+function finishHand(roomCode, winnerId = null, finishTile = null, reason = "finish") {
+  const code = normalizeRoomCode(roomCode);
+  const room = rooms[code];
+
+  if (!room || !room.game || room.game.handFinished) return;
+
+  clearTurnTimer(room);
+
+  const { handScores, isOkeyFinish } = calculateHandScores(
+    room,
+    winnerId,
+    finishTile
+  );
+
+  applyScores(room, handScores);
+
+  const winner = winnerId
+    ? room.players.find((player) => player.id === winnerId)
+    : null;
+
+  room.game.handFinished = true;
+  room.game.handResult = {
+    reason,
+    winnerId,
+    winnerName: winner?.name || null,
+    finishTile,
+    isOkeyFinish,
+    handScores,
+    totalScores: room.totalScores,
+    message: winner
+      ? `${winner.name} eli bitirdi${isOkeyFinish ? " ve okey ile bitti!" : "!"}`
+      : "Destede taş kalmadı. El bitti.",
+  };
+
+  broadcastGame(code);
+
+  clearNextHandTimer(room);
+
+  room.game.nextHandTimer = setTimeout(() => {
+    const liveRoom = rooms[code];
+
+    if (!liveRoom || liveRoom.players.length !== 4) return;
+
+    startNewHand(code);
+  }, NEXT_HAND_DELAY_MS);
+}
+
 function handleTurnTimeout(roomCode) {
   const code = normalizeRoomCode(roomCode);
   const room = rooms[code];
 
-  if (!room || !room.game) return;
+  if (!room || !room.game || room.game.handFinished) return;
 
   const playerId = room.game.currentTurnPlayerId;
 
   if (!playerId || !room.game.hands[playerId]) return;
 
+  const mustUseTileId = room.game.mustUseTakenTileIdByPlayerId[playerId];
+
+  if (mustUseTileId) {
+    returnTakenDiscardForPlayer(room, playerId);
+  }
+
   if (room.game.turnPhase === "draw") {
-    drawTileForPlayer(room, playerId);
+    const drawnTile = drawTileForPlayer(room, playerId);
+
+    if (!drawnTile) {
+      finishHand(code, null, null, "deck-empty");
+      return;
+    }
+
     room.game.turnPhase = "discard";
   }
 
-  discardTileForPlayer(room, playerId);
+  const discardedTile = discardTileForPlayer(room, playerId);
+
+  if (!discardedTile) {
+    finishHand(code, null, null, "no-discard");
+    return;
+  }
+
+  if ((room.game.hands[playerId] || []).length === 0) {
+    finishHand(code, playerId, discardedTile, "finish");
+    return;
+  }
+
   passTurn(code, playerId);
 }
 
-function startGame(roomCode) {
+function startNewHand(roomCode) {
   const code = normalizeRoomCode(roomCode);
   const room = rooms[code];
 
   if (!room || room.players.length !== 4) return;
 
   clearTurnTimer(room);
+  clearNextHandTimer(room);
 
   const tiles = shuffleTiles(createTiles());
   const hands = {};
 
+  const handNumber = (room.handNumber || 0) + 1;
+  room.handNumber = handNumber;
+
+  const starterIndex = (handNumber - 1) % room.players.length;
+
   room.players.forEach((player, index) => {
-    const tileCount = index === 0 ? 22 : 21;
+    const tileCount = index === starterIndex ? 22 : 21;
     hands[player.id] = tiles.splice(0, tileCount);
   });
 
   room.game = {
     started: true,
+    handFinished: false,
+    handResult: null,
+
     deck: tiles,
     hands,
 
-    currentTurnPlayerId: room.players[0].id,
+    currentTurnPlayerId: room.players[starterIndex].id,
     turnPhase: "discard",
 
     turnDeadline: Date.now() + TURN_SECONDS * 1000,
     turnTimer: null,
+    nextHandTimer: null,
 
     discardedTile: null,
     lastDiscardedByPlayerId: null,
     discardPiles: {},
+
     lastDrawnTileByPlayerId: {},
+    drawSourceByPlayerId: {},
+
+    takenDiscardByPlayerId: {},
+    mustUseTakenTileIdByPlayerId: {},
 
     openedSeries: [],
     openedPairs: [],
+    playerOpenTypes: {},
 
     indicatorTile: INDICATOR_TILE,
   };
@@ -401,16 +655,29 @@ function startGame(roomCode) {
       myPlayerId: player.id,
       myHand: hands[player.id],
       deckCount: room.game.deck.length,
+
       currentTurnPlayerId: room.game.currentTurnPlayerId,
       turnPhase: room.game.turnPhase,
       turnDeadline: room.game.turnDeadline,
       turnSeconds: TURN_SECONDS,
+
       discardedTile: room.game.discardedTile,
       lastDiscardedByPlayerId: room.game.lastDiscardedByPlayerId,
       discardPiles: room.game.discardPiles,
+
       openedSeries: room.game.openedSeries,
       openedPairs: room.game.openedPairs,
+      playerOpenTypes: room.game.playerOpenTypes,
+
       indicatorTile: room.game.indicatorTile,
+
+      takenDiscard: null,
+      mustUseTakenTileId: null,
+
+      handFinished: false,
+      handResult: null,
+      totalScores: room.totalScores,
+      handNumber: room.handNumber,
     });
   });
 
@@ -427,12 +694,20 @@ function getRoomOrError(socket, roomCode) {
   const room = rooms[code];
 
   if (!room) {
-    socket.emit("error-message", "Oyun bulunamadı. Server yeniden başladıysa yeni oda kurman gerekiyor.");
+    socket.emit(
+      "error-message",
+      "Oyun bulunamadı. Server yeniden başladıysa yeni oda kurman gerekiyor."
+    );
     return null;
   }
 
   if (!room.game || !room.game.started) {
     socket.emit("error-message", "Oyun henüz başlamadı.");
+    return null;
+  }
+
+  if (room.game.handFinished) {
+    socket.emit("error-message", "El bitti. Yeni el başlıyor.");
     return null;
   }
 
@@ -468,6 +743,8 @@ function openGroups(socket, roomCode, groups, mode) {
 
   let totalSeriesScore = 0;
   let totalPairCount = 0;
+
+  const mustUseTileId = room.game.mustUseTakenTileIdByPlayerId[socket.id];
 
   for (const groupIds of groups) {
     if (!Array.isArray(groupIds) || groupIds.length === 0) continue;
@@ -521,28 +798,55 @@ function openGroups(socket, roomCode, groups, mode) {
     return;
   }
 
-  if (mode === "series" && totalSeriesScore < 101) {
+  if (mustUseTileId && !usedIds.has(Number(mustUseTileId))) {
     socket.emit(
       "error-message",
-      `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`
+      "Yandan aldığın taşı açarken kullanmak zorundasın."
     );
     return;
   }
 
-  if (mode === "pairs" && totalPairCount < 5) {
-    socket.emit(
-      "error-message",
-      `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`
-    );
-    return;
+  const alreadyOpened = Boolean(room.game.playerOpenTypes[socket.id]);
+
+  if (!alreadyOpened) {
+    if (mode === "series" && totalSeriesScore < 101) {
+      socket.emit(
+        "error-message",
+        `Seri açmak için en az 101 lazım. Şu an: ${totalSeriesScore}`
+      );
+      return;
+    }
+
+    if (mode === "pairs" && totalPairCount < 5) {
+      socket.emit(
+        "error-message",
+        `Çift açmak için en az 5 çift lazım. Şu an: ${totalPairCount}`
+      );
+      return;
+    }
   }
 
-  room.game.hands[socket.id] = hand.filter((tile) => !usedIds.has(Number(tile.id)));
+  room.game.hands[socket.id] = hand.filter(
+    (tile) => !usedIds.has(Number(tile.id))
+  );
 
   if (mode === "series") {
     room.game.openedSeries.push(...openedGroups);
+
+    if (!room.game.playerOpenTypes[socket.id]) {
+      room.game.playerOpenTypes[socket.id] = "series";
+    }
   } else {
     room.game.openedPairs.push(...openedGroups);
+
+    if (!room.game.playerOpenTypes[socket.id]) {
+      room.game.playerOpenTypes[socket.id] = "pairs";
+    }
+  }
+
+  if (mustUseTileId) {
+    room.game.mustUseTakenTileIdByPlayerId[socket.id] = null;
+    room.game.takenDiscardByPlayerId[socket.id] = null;
   }
 
   broadcastGame(code);
@@ -565,6 +869,10 @@ io.on("connection", (socket) => {
         },
       ],
       game: null,
+      totalScores: {
+        [socket.id]: 0,
+      },
+      handNumber: 0,
     };
 
     socket.join(roomCode);
@@ -602,6 +910,8 @@ io.on("connection", (socket) => {
       money: 200 + (rooms[code].players.length + 1) * 17,
     });
 
+    rooms[code].totalScores[socket.id] = 0;
+
     socket.join(code);
 
     io.to(code).emit("players-updated", {
@@ -623,7 +933,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    startGame(code);
+    startNewHand(code);
   });
 
   socket.on("draw-tile", ({ roomCode }) => {
@@ -642,13 +952,74 @@ io.on("connection", (socket) => {
       return;
     }
 
+    if (room.game.drawSourceByPlayerId[socket.id] === "discard") {
+      socket.emit("error-message", "Yandan taş aldıysan kapalıdan taş çekemezsin.");
+      return;
+    }
+
     if (room.game.deck.length === 0) {
-      socket.emit("error-message", "Destede taş kalmadı.");
+      finishHand(code, null, null, "deck-empty");
       return;
     }
 
     drawTileForPlayer(room, socket.id);
     room.game.turnPhase = "discard";
+
+    startTurnTimer(code);
+    broadcastGame(code);
+  });
+
+  socket.on("take-discard", ({ roomCode }) => {
+    const result = getRoomOrError(socket, roomCode);
+    if (!result) return;
+
+    const { room, code } = result;
+
+    if (room.game.currentTurnPlayerId !== socket.id) {
+      socket.emit("error-message", "Sıra sende değil.");
+      return;
+    }
+
+    if (room.game.turnPhase !== "draw") {
+      socket.emit("error-message", "Şu an yandan taş alamazsın.");
+      return;
+    }
+
+    if (room.game.drawSourceByPlayerId[socket.id] === "deck") {
+      socket.emit("error-message", "Kapalıdan taş çektiysen yandan taş alamazsın.");
+      return;
+    }
+
+    const takenTile = takeDiscardForPlayer(room, socket.id);
+
+    if (!takenTile) {
+      socket.emit("error-message", "Alınacak yandaki taş yok.");
+      return;
+    }
+
+    room.game.turnPhase = "discard";
+
+    startTurnTimer(code);
+    broadcastGame(code);
+  });
+
+  socket.on("return-discard", ({ roomCode }) => {
+    const result = getRoomOrError(socket, roomCode);
+    if (!result) return;
+
+    const { room, code } = result;
+
+    if (room.game.currentTurnPlayerId !== socket.id) {
+      socket.emit("error-message", "Sıra sende değil.");
+      return;
+    }
+
+    const returned = returnTakenDiscardForPlayer(room, socket.id);
+
+    if (!returned) {
+      socket.emit("error-message", "Geri bırakılacak yandan alınmış taş yok.");
+      return;
+    }
 
     startTurnTimer(code);
     broadcastGame(code);
@@ -678,10 +1049,25 @@ io.on("connection", (socket) => {
       return;
     }
 
+    const mustUseTileId = room.game.mustUseTakenTileIdByPlayerId[socket.id];
+
+    if (mustUseTileId) {
+      socket.emit(
+        "error-message",
+        "Yandan aldığın taşı kullanmadan taş atamazsın. Önce elini açmalı ya da taşı geri bırakmalısın."
+      );
+      return;
+    }
+
     const discardedTile = discardTileForPlayer(room, socket.id, tileId);
 
     if (!discardedTile) {
       socket.emit("error-message", "Atılacak taş bulunamadı.");
+      return;
+    }
+
+    if ((room.game.hands[socket.id] || []).length === 0) {
+      finishHand(code, socket.id, discardedTile, "finish");
       return;
     }
 
@@ -695,6 +1081,7 @@ io.on("connection", (socket) => {
       if (!room) continue;
 
       room.players = room.players.filter((player) => player.id !== socket.id);
+      delete room.totalScores[socket.id];
 
       io.to(roomCode).emit("players-updated", {
         roomCode,
@@ -703,6 +1090,7 @@ io.on("connection", (socket) => {
 
       if (room.players.length === 0) {
         clearTurnTimer(room);
+        clearNextHandTimer(room);
         delete rooms[roomCode];
       }
     }
