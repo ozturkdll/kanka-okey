@@ -1199,12 +1199,14 @@ io.on("connection", (socket) => {
   console.log("Bir kullanıcı bağlandı:", socket.id);
 
   socket.on("create-room", ({ name, gameMode }) => {
-    const selectedGameMode = (typeof gameMode !== "undefined" ? gameMode : data?.gameMode) === "team" ? "team" : "solo";
-  const roomCode = createRoomCode();
+    const selectedGameMode = gameMode === "team" ? "team" : "solo";
+    const roomCode = createRoomCode();
 
     socket.data.roomCode = roomCode;
 
     rooms[roomCode] = {
+      gameMode: selectedGameMode,
+
       players: [
         {
           id: socket.id,
@@ -1223,6 +1225,7 @@ io.on("connection", (socket) => {
 
     socket.emit("room-created", {
       roomCode,
+      gameMode: room.gameMode || "solo",
       players: publicPlayerList(rooms[roomCode].players),
       myPlayerId: socket.id,
     });
@@ -1260,6 +1263,7 @@ io.on("connection", (socket) => {
 
     io.to(code).emit("players-updated", {
       roomCode: code,
+      gameMode: room.gameMode || "solo",
       players: publicPlayerList(rooms[code].players),
     });
   });
@@ -1479,6 +1483,7 @@ io.on("connection", (socket) => {
 
       io.to(roomCode).emit("players-updated", {
         roomCode,
+        gameMode: room.gameMode || "solo",
         players: publicPlayerList(room.players),
       });
 
